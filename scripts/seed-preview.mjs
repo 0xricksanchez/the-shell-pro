@@ -192,7 +192,6 @@ async function main() {
         method: 'PUT',
         headers: {Cookie: cookie}
     });
-    await new Promise((resolve) => setTimeout(resolve, 2_000));
     await configurePreviewNavigation(cookie);
     await configureCustomThemeSettings(cookie);
 
