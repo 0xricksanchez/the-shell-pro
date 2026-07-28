@@ -54,7 +54,7 @@
             <div class="site-footer__identity">
                 <p><span class="prompt" aria-hidden="true">$</span> {{@site.title}} <span class="muted">© {{date format="YYYY"}}</span></p>
                 <p class="site-footer__status">independent technical publishing</p>
-                {{#get "posts" limit="1" order="published_at desc" fields="url,published_at" as |latest|}}
+                {{#get "posts" limit="1" order="published_at desc" as |latest|}}
                     {{#foreach latest}}
                         <p class="site-footer__transmission">
                             <span class="site-footer__transmission-dot" aria-hidden="true"></span>

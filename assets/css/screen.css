@@ -1827,7 +1827,7 @@ button:focus-visible,
     height: .45rem;
     border-radius: 50%;
     background: var(--shell-accent);
-    box-shadow: 0 0 .6rem rgba(53, 224, 161, .75);
+    box-shadow: 0 0 .6rem color-mix(in srgb, var(--shell-accent) 75%, transparent);
 }
 
 .site-footer__identity .site-footer__transmission a {
