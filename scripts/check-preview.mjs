@@ -389,7 +389,13 @@ async function inspectFooter() {
             sideBySide: Boolean(identity && navigateBox && navigateBox.left >= identity.right),
             transmissionDate: transmissionTime?.getAttribute('datetime') || '',
             pgpText: pgp?.textContent.replace(/\\s+/g, ' ').trim() || '',
-            railLinks: footer ? footer.querySelectorAll('.site-footer__rail .site-footer__links a').length : 0
+            railLinks: footer ? footer.querySelectorAll('.site-footer__rail .site-footer__links a').length : 0,
+            transmissionColorMatchesText: (() => {
+                const link = transmission?.querySelector('a');
+                if (!link) return false;
+                const resolve = (value) => { const probe = document.createElement('span'); probe.style.color = value; document.body.appendChild(probe); const c = getComputedStyle(probe).color; probe.remove(); return c; };
+                return getComputedStyle(link).color === resolve('var(--shell-text)');
+            })()
         };
     })()`);
     check(desktop.navLabels.length >= 2, 'footer navigate column renders the secondary navigation', JSON.stringify(desktop.navLabels));
@@ -397,6 +403,7 @@ async function inspectFooter() {
     check(/^\d{4}-\d{2}-\d{2}$/.test(desktop.transmissionDate), 'footer last-transmission links the latest post with a dated time element', desktop.transmissionDate);
     check(desktop.pgpText.includes('3F2A 91C4'), 'footer renders the PGP fingerprint from custom settings', desktop.pgpText);
     check(desktop.minTarget >= 32, 'footer navigate links are touch-sized', String(desktop.minTarget));
+    check(desktop.transmissionColorMatchesText, 'footer transmission link uses the text color, not the muted color');
     check(desktop.railLinks >= 1, 'footer utility rail keeps the publication links', String(desktop.railLinks));
 
     await navigate('/', 390, 844);

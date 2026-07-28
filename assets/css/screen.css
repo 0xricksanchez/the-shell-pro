@@ -1830,7 +1830,7 @@ button:focus-visible,
     box-shadow: 0 0 .6rem rgba(53, 224, 161, .75);
 }
 
-.site-footer__transmission a {
+.site-footer__identity .site-footer__transmission a {
     color: var(--shell-text);
 }
 
@@ -1846,7 +1846,7 @@ button:focus-visible,
     color: color-mix(in srgb, var(--shell-muted) 80%, transparent);
 }
 
-.site-footer__pgp a {
+.site-footer__identity .site-footer__pgp a {
     color: var(--shell-text);
 }
 
