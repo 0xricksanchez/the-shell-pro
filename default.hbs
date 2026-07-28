@@ -54,18 +54,39 @@
             <div class="site-footer__identity">
                 <p><span class="prompt" aria-hidden="true">$</span> {{@site.title}} <span class="muted">© {{date format="YYYY"}}</span></p>
                 <p class="site-footer__status">independent technical publishing</p>
-            </div>
-            <div class="site-footer__navigation">
-                {{#if @site.secondary_navigation}}
-                    <nav class="footer-nav" aria-label="Secondary navigation">
-                        {{navigation type="secondary"}}
-                    </nav>
+                {{#get "posts" limit="1" order="published_at desc" fields="url,published_at" as |latest|}}
+                    {{#foreach latest}}
+                        <p class="site-footer__transmission">
+                            <span class="site-footer__transmission-dot" aria-hidden="true"></span>
+                            <span>last transmission</span>
+                            <a href="{{url}}"><time datetime="{{date format="YYYY-MM-DD"}}">{{date format="DD MMM YYYY"}}</time></a>
+                        </p>
+                    {{/foreach}}
+                {{/get}}
+                {{#if @custom.pgp_fingerprint}}
+                    <p class="site-footer__pgp">
+                        <span class="site-footer__pgp-label" aria-hidden="true">PGP</span>
+                        <span class="visually-hidden">PGP fingerprint</span>
+                        {{#if @custom.pgp_key_url}}
+                            <a href="{{@custom.pgp_key_url}}">{{@custom.pgp_fingerprint}}</a>
+                        {{else}}
+                            <span>{{@custom.pgp_fingerprint}}</span>
+                        {{/if}}
+                    </p>
                 {{/if}}
-                <div class="site-footer__links" aria-label="Publication links">
-                    <a href="{{@site.url}}/rss/">RSS</a>
-                    {{#if @site.twitter}}<a href="{{social_url type="twitter"}}" rel="me">Social</a>{{/if}}
-                    {{#if @site.members_enabled}}<a href="#/portal/account">Member account</a>{{/if}}
-                </div>
+            </div>
+            {{#if @site.secondary_navigation}}
+                <nav class="site-footer__navigate" aria-label="Footer navigation">
+                    <p class="eyebrow">// navigate</p>
+                    {{navigation type="secondary"}}
+                </nav>
+            {{/if}}
+        </div>
+        <div class="site-footer__rail">
+            <div class="site-footer__links" aria-label="Publication links">
+                <a href="{{@site.url}}/rss/">RSS</a>
+                {{#if @site.twitter}}<a href="{{social_url type="twitter"}}" rel="me">Social</a>{{/if}}
+                {{#if @site.members_enabled}}<a href="#/portal/account">Member account</a>{{/if}}
             </div>
         </div>
     </footer>
