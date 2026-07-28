@@ -27,6 +27,16 @@
         "type": "boolean",
         "default": false,
         "description": "Show Ghost comments below technical posts"
+      },
+      "pgp_fingerprint": {
+        "type": "text",
+        "default": "",
+        "description": "Public PGP key fingerprint shown in the footer colophon (leave empty to hide)"
+      },
+      "pgp_key_url": {
+        "type": "text",
+        "default": "",
+        "description": "Optional link target for the footer PGP fingerprint (keyserver or .asc file)"
       }
     },
     "image_sizes": {

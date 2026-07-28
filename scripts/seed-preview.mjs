@@ -152,6 +152,22 @@ async function configurePreviewNavigation(cookie) {
     });
 }
 
+async function configureCustomThemeSettings(cookie) {
+    await request('/custom_theme_settings/', {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            Cookie: cookie
+        },
+        body: JSON.stringify({
+            custom_theme_settings: [
+                {key: 'pgp_fingerprint', value: '3F2A 91C4 D06B 5A7E 22C1 09AB 44E0 7F10 8C55 21DA'},
+                {key: 'pgp_key_url', value: 'https://example.test/pgp.asc'}
+            ]
+        })
+    });
+}
+
 async function main() {
     await waitForGhost();
 
@@ -176,7 +192,9 @@ async function main() {
         method: 'PUT',
         headers: {Cookie: cookie}
     });
+    await new Promise((resolve) => setTimeout(resolve, 2_000));
     await configurePreviewNavigation(cookie);
+    await configureCustomThemeSettings(cookie);
 
     const telemetryImageUrl = await uploadPreviewImage('telemetry-loop.svg', cookie);
     const budgetImageUrl = await uploadPreviewImage('failure-budget.svg', cookie);
