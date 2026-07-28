@@ -372,6 +372,43 @@ async function inspectLongArticle() {
     check(mobileToc.position === 'sticky' && mobileToc.toggleHeight >= 40, 'mobile TOC remains reachable as a sticky, touch-sized control', JSON.stringify(mobileToc));
 }
 
+async function inspectFooter() {
+    await navigate('/');
+    const desktop = await evaluate(`(() => {
+        const footer = document.querySelector('.site-footer');
+        const identity = footer?.querySelector('.site-footer__identity')?.getBoundingClientRect();
+        const navigateColumn = footer?.querySelector('.site-footer__navigate');
+        const navigateBox = navigateColumn?.getBoundingClientRect();
+        const navLinks = navigateColumn ? Array.from(navigateColumn.querySelectorAll('.footer-nav__links a')) : [];
+        const transmission = footer?.querySelector('.site-footer__transmission');
+        const transmissionTime = transmission?.querySelector('a[href] time[datetime]');
+        const pgp = footer?.querySelector('.site-footer__pgp');
+        return {
+            navLabels: navLinks.map((link) => link.textContent.trim()),
+            minTarget: navLinks.length ? Math.min(...navLinks.map((link) => link.getBoundingClientRect().height)) : 0,
+            sideBySide: Boolean(identity && navigateBox && navigateBox.left >= identity.right),
+            transmissionDate: transmissionTime?.getAttribute('datetime') || '',
+            pgpText: pgp?.textContent.replace(/\\s+/g, ' ').trim() || '',
+            railLinks: footer ? footer.querySelectorAll('.site-footer__rail .site-footer__links a').length : 0
+        };
+    })()`);
+    check(desktop.navLabels.length >= 2, 'footer navigate column renders the secondary navigation', JSON.stringify(desktop.navLabels));
+    check(desktop.sideBySide, 'desktop footer places the navigate column beside the identity block');
+    check(/^\d{4}-\d{2}-\d{2}$/.test(desktop.transmissionDate), 'footer last-transmission links the latest post with a dated time element', desktop.transmissionDate);
+    check(desktop.pgpText.includes('3F2A 91C4'), 'footer renders the PGP fingerprint from custom settings', desktop.pgpText);
+    check(desktop.minTarget >= 32, 'footer navigate links are touch-sized', String(desktop.minTarget));
+    check(desktop.railLinks >= 1, 'footer utility rail keeps the publication links', String(desktop.railLinks));
+
+    await navigate('/', 390, 844);
+    const mobile = await evaluate(`(() => {
+        const footer = document.querySelector('.site-footer');
+        const identity = footer?.querySelector('.site-footer__identity')?.getBoundingClientRect();
+        const navigateBox = footer?.querySelector('.site-footer__navigate')?.getBoundingClientRect();
+        return {stacked: Boolean(identity && navigateBox && navigateBox.top >= identity.bottom)};
+    })()`);
+    check(mobile.stacked, 'mobile footer stacks the navigate column below the identity block');
+}
+
 async function main() {
     await launchBrowser();
     await inspectHome();
@@ -380,6 +417,7 @@ async function main() {
     await inspectShortArticle();
     await inspectErrorPage();
     await inspectLongArticle();
+    await inspectFooter();
     if (failures.length) {
         throw new Error(`${failures.length} preview check${failures.length === 1 ? '' : 's'} failed`);
     }
