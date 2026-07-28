@@ -1,0 +1,29 @@
+{{!< default}}
+
+{{#post}}
+<main id="main-content" class="site-main site-main--topics">
+    <header class="listing-header">
+        <p class="eyebrow">// research index</p>
+        <h1>{{title}}</h1>
+        {{#if custom_excerpt}}<p>{{custom_excerpt}}</p>{{/if}}
+    </header>
+
+    {{#if html}}
+        <section class="topic-directory__intro article-content">
+            {{content}}
+        </section>
+    {{/if}}
+
+    <section class="topic-directory" aria-label="Topics">
+        {{#get "tags" limit="100" order="count.posts desc" include="count.posts" filter="slug:-field-note+slug:-deep-dive+slug:-lab-log+slug:-tool-release+slug:-advisory+slug:-preview"}}
+            {{#foreach tags}}
+                <a class="topic-card" href="{{url}}">
+                    <span class="topic-card__count">{{count.posts}} {{plural count.posts empty="entries" singular="entry" plural="entries"}}</span>
+                    <strong>{{name}}</strong>
+                    {{#if description}}<span class="topic-card__description">{{description}}</span>{{else}}<span class="topic-card__description">Browse all published work tagged {{name}}.</span>{{/if}}
+                </a>
+            {{/foreach}}
+        {{/get}}
+    </section>
+</main>
+{{/post}}

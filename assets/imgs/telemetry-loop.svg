@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
+  <title id="title">Telemetry feedback loop</title>
+  <desc id="desc">A technical diagram showing an edge probe sending traces through an ingest gateway and event store to a decision engine, which returns a policy update.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#101923"/><stop offset="1" stop-color="#172536"/></linearGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#35e0a1"/></marker>
+  </defs>
+  <rect width="1200" height="620" fill="url(#bg)"/>
+  <g opacity=".24" stroke="#7dd3fc" stroke-width="1"><path d="M0 70H1200M0 140H1200M0 210H1200M0 280H1200M0 350H1200M0 420H1200M0 490H1200M0 560H1200"/><path d="M70 0V620M140 0V620M210 0V620M280 0V620M350 0V620M420 0V620M490 0V620M560 0V620M630 0V620M700 0V620M770 0V620M840 0V620M910 0V620M980 0V620M1050 0V620M1120 0V620"/></g>
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace">
+    <text x="58" y="66" fill="#e697ff" font-size="19" font-weight="700">TRACE // FEEDBACK LOOP</text>
+    <text x="58" y="98" fill="#8492a5" font-size="14">CONTROL PLANE / 200 MS BUDGET</text>
+    <g fill="#182b3b" stroke="#35e0a1" stroke-width="2">
+      <rect x="70" y="226" width="200" height="126" rx="4"/>
+      <rect x="365" y="226" width="200" height="126" rx="4"/>
+      <rect x="660" y="226" width="200" height="126" rx="4"/>
+      <rect x="955" y="226" width="180" height="126" rx="4"/>
+    </g>
+    <g fill="#d5dce7" font-size="17" font-weight="700"><text x="94" y="268">EDGE PROBE</text><text x="389" y="268">INGEST GATEWAY</text><text x="684" y="268">EVENT STORE</text><text x="979" y="268">DECISION</text><text x="979" y="290">ENGINE</text></g>
+    <g fill="#7dd3fc" font-size="13"><text x="94" y="306">span + metric</text><text x="389" y="306">batch / validate</text><text x="684" y="306">append / query</text><text x="979" y="326">policy compiler</text></g>
+    <g fill="none" stroke="#35e0a1" stroke-width="3" marker-end="url(#arrow)" filter="url(#glow)"><path d="M270 289H350"/><path d="M565 289H645"/><path d="M860 289H940"/><path d="M1045 353V482H170V366"/></g>
+    <g fill="#35e0a1" font-size="13"><text x="280" y="272">35 ms</text><text x="575" y="272">48 ms</text><text x="870" y="272">61 ms</text><text x="540" y="468">signed policy update</text></g>
+    <g fill="#facc6b"><circle cx="170" cy="500" r="5"/><circle cx="485" cy="500" r="5"/><circle cx="830" cy="500" r="5"/></g>
+    <g fill="#8492a5" font-size="12"><text x="184" y="505">sampling adapts at the edge</text><text x="499" y="505">durable append boundary</text><text x="844" y="505">tail latency remains visible</text></g>
+  </g>
+</svg>

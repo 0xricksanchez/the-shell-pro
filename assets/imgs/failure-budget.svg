@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 560" role="img" aria-labelledby="title desc">
+  <title id="title">Failure budget waterfall</title>
+  <desc id="desc">A diagram showing a 200 millisecond latency budget allocated across DNS, TLS, request, database, and rendering stages.</desc>
+  <defs><linearGradient id="bg" x1="0" x2="1"><stop stop-color="#101923"/><stop offset="1" stop-color="#1b2637"/></linearGradient></defs>
+  <rect width="1200" height="560" fill="url(#bg)"/>
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace">
+    <text x="58" y="66" fill="#e697ff" font-size="19" font-weight="700">LATENCY // BUDGET WATERFALL</text>
+    <text x="58" y="98" fill="#8492a5" font-size="14">P95 TARGET: 200 MS / ALERT AT 170 MS</text>
+    <g stroke="#304257" stroke-width="1"><path d="M58 160H1142M58 240H1142M58 320H1142M58 400H1142"/></g>
+    <g fill="#8492a5" font-size="12"><text x="58" y="145">200</text><text x="58" y="225">150</text><text x="58" y="305">100</text><text x="58" y="385">50</text></g>
+    <g>
+      <rect x="150" y="336" width="118" height="64" fill="#7dd3fc"/><rect x="344" y="298" width="118" height="102" fill="#c4b5fd"/><rect x="538" y="230" width="118" height="170" fill="#35e0a1"/><rect x="732" y="272" width="118" height="128" fill="#facc6b"/><rect x="926" y="314" width="118" height="86" fill="#e697ff"/>
+      <path d="M150 336H268M344 298H462M538 230H656M732 272H850M926 314H1044" stroke="#d5dce7" stroke-width="2"/>
+    </g>
+    <g fill="#d5dce7" font-size="14" font-weight="700"><text x="174" y="430">DNS</text><text x="373" y="430">TLS</text><text x="553" y="430">REQUEST</text><text x="747" y="430">DATABASE</text><text x="940" y="430">RENDER</text></g>
+    <g fill="#8492a5" font-size="13"><text x="184" y="454">40 ms</text><text x="378" y="454">64 ms</text><text x="572" y="454">106 ms</text><text x="767" y="454">80 ms</text><text x="951" y="454">54 ms</text></g>
+    <path d="M92 128H1052" stroke="#ff7b88" stroke-width="2" stroke-dasharray="8 8"/><text x="1058" y="133" fill="#ff7b88" font-size="12">ALERT</text>
+  </g>
+</svg>

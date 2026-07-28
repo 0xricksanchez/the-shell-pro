@@ -1,0 +1,17 @@
+{{!< default}}
+
+{{#tag}}
+<main id="main-content" class="site-main">
+    <header class="listing-header">
+        <p class="eyebrow">// tag</p>
+        <h1>{{name}}</h1>
+        {{#if description}}<p>{{description}}</p>{{/if}}
+    </header>
+{{/tag}}
+    <section class="post-feed home-feed archive-feed" aria-label="Posts in this tag">
+        {{#foreach posts}}
+            {{> "post-card"}}
+        {{/foreach}}
+    </section>
+    {{pagination}}
+</main>

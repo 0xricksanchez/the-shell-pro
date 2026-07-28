@@ -1,68 +1,151 @@
 {{!< default}}
 
-{{! The comment above "< default" means - insert everything in this file into
-    the {body} of the default.hbs template, which contains our header/footer. }}
+{{#post}}
+<main id="main-content" class="site-main site-main--article">
+    <article class="article {{post_class}}">
+        <header class="article-header">
+            <div class="article-header__content">
+                {{> "post-type"}}
+                <p class="eyebrow">{{#primary_tag}}<a href="{{url}}">// {{name}}</a>{{else}}// field note{{/primary_tag}}</p>
+                <h1>{{title}}</h1>
+                {{#if custom_excerpt}}<p class="article-header__excerpt">{{custom_excerpt}}</p>{{/if}}
+                <div class="article-meta">
+                    {{#primary_author}}
+                        {{#if profile_image}}<img src="{{img_url profile_image size="xs"}}" alt="{{name}}">{{/if}}
+                        <a href="{{url}}">{{name}}</a>
+                    {{/primary_author}}
+                    <span aria-hidden="true">·</span>
+                    <time datetime="{{date format="YYYY-MM-DD"}}">{{date format="DD MMM YYYY"}}</time>
+                    <span aria-hidden="true">·</span>
+                    <span>{{reading_time}}</span>
+                    {{#has tag="#updated"}}
+                        {{#if updated_at}}<span class="article-meta__updated">updated <time datetime="{{date updated_at format="YYYY-MM-DD"}}">{{date updated_at format="DD MMM YYYY"}}</time></span>{{/if}}
+                    {{/has}}
+                </div>
+            </div>
 
-<main class="content" role="main">
-    {{#if @blog.navigation}}
-        {{navigation}}
-    {{/if}}
-    <article class="{{post_class}}">
-
-        {{! Each post has the blog logo at the top, with a link back to the home page }}
-        <header class="post-header">
-            <a id="blog-logo" href="{{@blog.url}}">
-                {{#if @blog.logo}}
-                    <img src="{{@blog.logo}}" alt="Blog Logo" />
-                {{else}}
-                    {{@blog.title}}
-                {{/if}}
-            </a>
+            {{#if feature_image}}
+                <figure class="article-feature-image">
+                    <picture>
+                        <source
+                            type="image/webp"
+                            srcset="{{img_url feature_image size="m" format="webp"}} 1000w,
+                                    {{img_url feature_image size="l" format="webp"}} 1600w,
+                                    {{img_url feature_image size="xl" format="webp"}} 2400w"
+                            sizes="(min-width: 1280px) 1120px, 92vw">
+                        <img
+                            src="{{img_url feature_image size="l"}}"
+                            srcset="{{img_url feature_image size="m"}} 1000w,
+                                    {{img_url feature_image size="l"}} 1600w,
+                                    {{img_url feature_image size="xl"}} 2400w"
+                            sizes="(min-width: 1280px) 1120px, 92vw"
+                            alt="{{#if feature_image_alt}}{{feature_image_alt}}{{else}}{{title}}{{/if}}">
+                    </picture>
+                    {{#if feature_image_caption}}<figcaption>{{feature_image_caption}}</figcaption>{{/if}}
+                </figure>
+            {{/if}}
         </header>
 
-        {{! Everything inside the #post tags pulls data from the post }}
-        {{#post}}
+        <div class="article-layout">
+            <aside class="article-toc" data-toc-container>
+                <nav class="toc" data-toc aria-label="Table of contents">
+                    <p class="toc__title">On this page</p>
+                </nav>
+            </aside>
+            <section class="article-content" data-post-content>
+                {{content}}
+            </section>
+        </div>
 
-        {{! Everything below outputs content of the the post which has been published }}
-        <h1 class="post-title">{{{title}}}</h1>
-        <span class="post-meta"><time datetime="{{date format="YYYY-MM-DD"}}">{{date format='YYYY-MM-DD'}}</time> {{#if tags}} on {{tags separator=" | "}}{{/if}}</span>
+        <footer class="article-footer">
+            <section
+                class="article-actions"
+                data-article-actions
+                data-share-title="{{title}}"
+                data-share-url="{{url absolute="true"}}"
+                data-share-author="{{#primary_author}}{{name}}{{/primary_author}}"
+                data-share-date="{{date format="YYYY-MM-DD"}}"
+                data-share-site="{{@site.title}}"
+                aria-label="Share and cite this article">
+                <div>
+                    <p class="eyebrow">// transmit</p>
+                    <p>Save a durable link or copy a citation for your notes.</p>
+                </div>
+                <div class="article-actions__buttons">
+                    <button type="button" class="article-action" data-copy-link>Copy link</button>
+                    <button type="button" class="article-action" data-copy-citation>Copy citation</button>
+                    <button type="button" class="article-action" data-native-share hidden>Share</button>
+                </div>
+            </section>
 
-        <section class="post-content">
-            {{content}}
-        </section>
-        
-        <div id="disqus_thread"></div>
-        <script type="text/javascript">
-            var disqus_shortname = disqus_shortname; 
-        
-            /* * * DON'T EDIT BELOW THIS LINE * * */
-            (function() {
-                var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
-                dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
-                (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
-            })();
-        </script>
-        <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
-        <a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
-        
-
-        <footer class="post-footer">
-
-            {{#if author}}
-                <section class="author">
-                    <h4>{{author.name}}</h4>
-                    <p>{{author.bio}}</p>
+            {{#if tags}}
+                <section class="article-tags" aria-label="Tags">
+                    <span>Tags</span>
+                    {{tags separator=""}}
                 </section>
             {{/if}}
 
-            <section class="social">
-                <h4>Follow me</h4>
+            {{#if authors}}
+                <section class="author-list" aria-label="Authors">
+                    {{#foreach authors}}
+                        <article class="author-card">
+                            {{#if profile_image}}<img src="{{img_url profile_image size="xs"}}" alt="{{name}}">{{/if}}
+                            <div>
+                                <h2><a href="{{url}}">{{name}}</a></h2>
+                                {{#if bio}}<p>{{bio}}</p>{{/if}}
+                            </div>
+                        </article>
+                    {{/foreach}}
+                </section>
+            {{/if}}
+
+            <section class="article-neighbours" aria-label="Adjacent entries">
+                <p class="eyebrow">// continue reading</p>
+                <div class="article-neighbours__grid">
+                    {{#prev_post}}
+                        <a class="article-neighbour article-neighbour--previous" href="{{url}}">
+                            <span>← Previous entry</span>
+                            <strong>{{title}}</strong>
+                        </a>
+                    {{/prev_post}}
+                    {{#next_post}}
+                        <a class="article-neighbour article-neighbour--next" href="{{url}}">
+                            <span>Next entry →</span>
+                            <strong>{{title}}</strong>
+                        </a>
+                    {{/next_post}}
+                </div>
             </section>
 
+            {{#get "posts" limit="3" order="published_at desc" include="tags" filter="primary_tag:{{primary_tag.slug}}+id:-{{id}}"}}
+                {{#foreach posts}}
+                    {{#if @first}}
+                        <section class="related-posts" aria-labelledby="related-posts-title">
+                            <div class="related-posts__heading">
+                                <p class="eyebrow">// same signal</p>
+                                <h2 id="related-posts-title">More in {{primary_tag.name}}</h2>
+                            </div>
+                            <div class="related-posts__grid">
+                    {{/if}}
+                                <a class="related-post" href="{{url}}">
+                                    <span>{{date format="DD MMM YYYY"}} · {{reading_time}}</span>
+                                    <strong>{{title}}</strong>
+                                </a>
+                    {{#if @last}}
+                            </div>
+                        </section>
+                    {{/if}}
+                {{/foreach}}
+            {{/get}}
+
+            {{#if @custom.show_comments}}
+                {{#if @site.comments_enabled}}
+                    <section class="article-comments" aria-label="Comments">
+                    {{comments mode="dark" title="Discussion" count=false}}
+                    </section>
+                {{/if}}
+            {{/if}}
         </footer>
-
-        {{/post}}
-
     </article>
-
 </main>
+{{/post}}

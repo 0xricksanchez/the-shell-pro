@@ -1,0 +1,23 @@
+{{#has tag="Field Note"}}
+    <span class="post-type post-type--field">Field note</span>
+{{else}}
+    {{#has tag="Deep Dive"}}
+        <span class="post-type post-type--deep">Deep dive</span>
+    {{else}}
+        {{#has tag="Lab Log"}}
+            <span class="post-type post-type--lab">Lab log</span>
+        {{else}}
+            {{#has tag="Tool Release"}}
+                <span class="post-type post-type--tool">Tool release</span>
+            {{else}}
+                {{#has tag="Advisory"}}
+                    <span class="post-type post-type--advisory">Advisory</span>
+                {{else}}
+                    {{#unless hide_fallback}}
+                        <span class="post-type post-type--research">Research note</span>
+                    {{/unless}}
+                {{/has}}
+            {{/has}}
+        {{/has}}
+    {{/has}}
+{{/has}}

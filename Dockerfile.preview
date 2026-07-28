@@ -1,0 +1,6 @@
+FROM ghost:6.54.1
+
+USER root
+RUN rm -rf /var/lib/ghost/content.orig/themes/the-shell-pro
+COPY --chown=node:node . /var/lib/ghost/content.orig/themes/the-shell-pro/
+USER node
