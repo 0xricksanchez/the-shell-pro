@@ -37,6 +37,51 @@
         "type": "text",
         "default": "",
         "description": "Optional link target for the footer PGP fingerprint (keyserver or .asc file)"
+      },
+      "social_github": {
+        "type": "text",
+        "default": "",
+        "description": "Full GitHub profile URL (leave empty to hide the icon)"
+      },
+      "social_twitter": {
+        "type": "text",
+        "default": "",
+        "description": "Full X/Twitter profile URL (leave empty to hide the icon)"
+      },
+      "social_bluesky": {
+        "type": "text",
+        "default": "",
+        "description": "Full Bluesky profile URL (leave empty to hide the icon)"
+      },
+      "social_mastodon": {
+        "type": "text",
+        "default": "",
+        "description": "Full Mastodon profile URL (leave empty to hide the icon)"
+      },
+      "social_linkedin": {
+        "type": "text",
+        "default": "",
+        "description": "Full LinkedIn profile URL (leave empty to hide the icon)"
+      },
+      "social_discord": {
+        "type": "text",
+        "default": "",
+        "description": "Discord server invite URL (leave empty to hide the icon)"
+      },
+      "social_hackthebox": {
+        "type": "text",
+        "default": "",
+        "description": "Hack The Box profile URL (leave empty to hide the icon)"
+      },
+      "social_custom_url": {
+        "type": "text",
+        "default": "",
+        "description": "One extra platform URL rendered with a generic link icon"
+      },
+      "social_custom_label": {
+        "type": "text",
+        "default": "",
+        "description": "Accessible label for the extra platform icon (e.g. HackerOne)"
       }
     },
     "image_sizes": {
