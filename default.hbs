@@ -83,10 +83,9 @@
             {{/if}}
         </div>
         <div class="site-footer__rail">
-            <div class="site-footer__links" aria-label="Publication links">
-                <a href="{{@site.url}}/rss/">RSS</a>
-                {{#if @site.twitter}}<a href="{{social_url type="twitter"}}" rel="me">Social</a>{{/if}}
-                {{#if @site.members_enabled}}<a href="#/portal/account">Member account</a>{{/if}}
+            <div class="site-footer__rail-inner">
+                {{> "social-links"}}
+                {{#if @site.members_enabled}}<a class="site-footer__member" href="#/portal/account">Member account</a>{{/if}}
             </div>
         </div>
     </footer>
