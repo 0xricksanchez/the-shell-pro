@@ -59,3 +59,12 @@ typings/
 
 # next.js build output
 .next
+
+#
+.zip/**
+.scratch/**
+docs/**
+
+# Release artifacts and local scratch notes stay out of the repo
+the-shell-pro-*.zip
+.scratch/
