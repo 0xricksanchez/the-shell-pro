@@ -255,12 +255,13 @@ async function inspectMobileHome() {
             imageWidth: imageBox?.width || 0,
             bodyWidth: bodyBox?.width || 0,
             readBelowExcerpt: Boolean(readBox && excerptBox && readBox.top >= excerptBox.bottom - 1),
-            backToTopPosition: backToTop ? getComputedStyle(backToTop).position : ''
+            backToTopPosition: backToTop ? getComputedStyle(backToTop).position : '',
+            backToTopInActions: Boolean(backToTop?.closest('.site-actions'))
         };
     })()`);
     check(Math.abs(state.imageWidth - state.bodyWidth) <= 2, 'mobile post-card image and body use the full card width', JSON.stringify(state));
     check(state.readBelowExcerpt, 'mobile Read entry link stays below the excerpt');
-    check(state.backToTopPosition !== 'fixed', 'mobile back-to-top stays in the header', state.backToTopPosition);
+    check(state.backToTopPosition !== 'fixed' && state.backToTopInActions, 'mobile back-to-top stays in the header', JSON.stringify(state));
 }
 
 async function inspectCollapsedNavigation() {

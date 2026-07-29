@@ -154,12 +154,21 @@ button:focus-visible,
  * which would trap the floating .back-to-top button inside the header box instead of
  * anchoring it to the viewport. The pseudo-element reproduces the identical look
  * without being an ancestor of .back-to-top.
+ *
+ * Note this does not fully free .back-to-top from the header: position: sticky always
+ * creates a stacking context, so .site-header (z-index: 30) is still an ancestor
+ * stacking context for the button. Its z-index: 40 only wins against other content
+ * *inside* that context — the header as a whole still composites at layer 30, so a
+ * future non-header element with z-index 31-39 would paint over the button despite its
+ * nominal 40. Fully escaping that would require moving .back-to-top out of the header
+ * in markup, which is out of scope here (markup is frozen).
  */
 .site-header::before {
     position: absolute;
     z-index: -1;
     inset: 0;
     content: "";
+    pointer-events: none;
     background: rgba(17, 24, 34, .88);
     backdrop-filter: blur(16px);
 }
