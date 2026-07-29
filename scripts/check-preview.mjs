@@ -430,7 +430,7 @@ async function inspectFooter() {
             transmissionDate: transmissionTime?.getAttribute('datetime') || '',
             transmissionHref,
             pgpText: pgp?.textContent.replace(/\\s+/g, ' ').trim() || '',
-            railLinks: footer ? footer.querySelectorAll('.site-footer__rail .site-footer__links a').length : 0,
+            railLinks: footer ? footer.querySelectorAll('.site-footer__rail a').length : 0,
             transmissionColorMatchesText: (() => {
                 const link = transmission?.querySelector('a');
                 if (!link) return false;
