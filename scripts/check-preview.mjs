@@ -404,11 +404,13 @@ async function inspectEndmatter() {
     await navigate('/tracing-the-edge-200ms-feedback-loop/', 390, 844);
     const mobile = await evaluate(`(() => {
         const links = Array.from(document.querySelectorAll('.article-neighbours__strip a'));
-        if (links.length < 2) { return {stacked: links.length === 1}; }
+        const overflow = document.documentElement.scrollWidth - document.documentElement.clientWidth;
+        if (links.length < 2) { return {stacked: links.length === 1, overflow}; }
         const [a, b] = links.map((link) => link.getBoundingClientRect());
-        return {stacked: b.top >= a.bottom};
+        return {stacked: b.top >= a.bottom, overflow};
     })()`);
     check(mobile.stacked, 'continue-reading strip stacks on mobile');
+    check(mobile.overflow <= 0, 'article page has no horizontal overflow on mobile', String(mobile.overflow));
 }
 
 async function inspectFooter() {
