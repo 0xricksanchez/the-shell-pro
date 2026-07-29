@@ -188,6 +188,160 @@ async function evaluate(expression) {
     return result.result.value;
 }
 
+function normalizedPath(value) {
+    const path = new URL(value, baseUrl).pathname;
+    return path === '/' ? path : `${path.replace(/\/+$/, '')}/`;
+}
+
+async function inspectSeoRoute({
+    path,
+    expectedStatus = 200,
+    expectedSchema = '',
+    expectBreadcrumbs = true,
+    expectCanonical = true,
+    expectDescription = true,
+    expectIndexable = true,
+    initialContent = ''
+}) {
+    const response = await fetch(new URL(path, baseUrl), {redirect: 'manual'});
+    const html = await response.text();
+    check(response.status === expectedStatus, `${path} returns HTTP ${expectedStatus}`, String(response.status));
+
+    await navigate(path);
+    const state = await evaluate(`(() => {
+        const schemaTypes = new Set();
+        const schemaErrors = [];
+        function collectTypes(value) {
+            if (!value || typeof value !== 'object') return;
+            const type = value['@type'];
+            (Array.isArray(type) ? type : [type]).filter(Boolean).forEach((item) => schemaTypes.add(item));
+            Object.values(value).forEach(collectTypes);
+        }
+        document.querySelectorAll('script[type="application/ld+json"]').forEach((script) => {
+            try {
+                collectTypes(JSON.parse(script.textContent));
+            } catch (error) {
+                schemaErrors.push(error.message);
+            }
+        });
+        const canonical = document.querySelector('link[rel="canonical"]')?.href || '';
+        const ogUrl = document.querySelector('meta[property="og:url"]')?.content || '';
+        const badLinks = Array.from(document.querySelectorAll('main a')).filter((link) => {
+            const href = link.getAttribute('href');
+            return !href || /^javascript:/i.test(href);
+        }).length;
+        const robots = Array.from(document.querySelectorAll('meta[name="robots"]')).map((meta) => meta.content);
+        const breadcrumbPositions = Array.from(document.querySelectorAll('.breadcrumbs [itemprop="position"]'))
+            .map((meta) => meta.content);
+        return {
+            titles: document.querySelectorAll('head > title').length,
+            title: document.title.trim(),
+            descriptions: document.querySelectorAll('meta[name="description"]').length,
+            description: document.querySelector('meta[name="description"]')?.content.trim() || '',
+            canonicals: document.querySelectorAll('link[rel="canonical"]').length,
+            canonical,
+            ogUrl,
+            h1s: document.querySelectorAll('main h1').length,
+            schemaTypes: Array.from(schemaTypes),
+            schemaErrors,
+            robots,
+            badLinks,
+            breadcrumbs: document.querySelectorAll('.breadcrumbs').length,
+            breadcrumbPositions,
+            missingMainImageAlt: Array.from(document.querySelectorAll('main img')).filter((image) => !image.hasAttribute('alt')).length,
+            lang: document.documentElement.lang
+        };
+    })()`);
+
+    check(state.titles === 1 && Boolean(state.title), `${path} has one non-empty document title`, JSON.stringify(state));
+    check(state.h1s === 1, `${path} has one page-level H1`, String(state.h1s));
+    check(state.schemaErrors.length === 0, `${path} emits parseable JSON-LD`, state.schemaErrors.join('; '));
+    check(state.badLinks === 0, `${path} main-content links are crawlable anchors`, String(state.badLinks));
+    check(state.missingMainImageAlt === 0, `${path} main-content images declare alt semantics`, String(state.missingMainImageAlt));
+    check(Boolean(state.lang), `${path} declares the document language`, state.lang);
+
+    if (expectDescription) {
+        check(
+            state.descriptions === 1 && Boolean(state.description),
+            `${path} has one useful meta description`,
+            JSON.stringify({count: state.descriptions, value: state.description})
+        );
+    } else {
+        check(state.descriptions <= 1, `${path} does not duplicate meta descriptions`, String(state.descriptions));
+    }
+
+    if (expectCanonical) {
+        const canonicalMatches = state.canonicals === 1
+            && new URL(state.canonical).origin === new URL(baseUrl).origin
+            && normalizedPath(state.canonical) === normalizedPath(new URL(path, baseUrl));
+        check(canonicalMatches, `${path} has one matching self-canonical`, state.canonical);
+        check(!state.ogUrl || state.ogUrl === state.canonical, `${path} Open Graph URL agrees with canonical`, state.ogUrl);
+    } else {
+        check(state.canonicals === 0, `${path} does not canonicalize an error document`, String(state.canonicals));
+    }
+
+    if (expectIndexable) {
+        check(
+            state.robots.length === 1
+                && state.robots[0].includes('max-image-preview:large')
+                && !state.robots.some((value) => /\bnoindex\b/i.test(value)),
+            `${path} has no conflicting or accidental noindex directive`,
+            JSON.stringify(state.robots)
+        );
+    } else {
+        check(state.robots.length <= 2, `${path} has no conflicting robot-directive sprawl`, JSON.stringify(state.robots));
+    }
+
+    if (expectedSchema) {
+        check(state.schemaTypes.includes(expectedSchema), `${path} includes Ghost's ${expectedSchema} schema`, state.schemaTypes.join(', '));
+    }
+
+    if (expectBreadcrumbs) {
+        const sequential = state.breadcrumbPositions.every((position, index) => Number(position) === index + 1);
+        check(
+            state.breadcrumbs === 1 && state.breadcrumbPositions.length >= 2 && sequential,
+            `${path} exposes one visible BreadcrumbList`,
+            JSON.stringify(state.breadcrumbPositions)
+        );
+    } else {
+        check(state.breadcrumbs === 0, `${path} omits redundant breadcrumbs`);
+    }
+
+    const initialMarkers = Array.isArray(initialContent) ? initialContent : [initialContent].filter(Boolean);
+    for (const marker of initialMarkers) {
+        check(html.includes(marker), `${path} keeps ${marker} in the initial HTML`);
+    }
+}
+
+async function inspectSeoContracts() {
+    const routes = [
+        {path: '/', expectedSchema: 'WebSite', expectBreadcrumbs: false},
+        {
+            path: '/tracing-the-edge-200ms-feedback-loop/',
+            expectedSchema: 'Article',
+            initialContent: ['Most systems become difficult to operate', 'class="article-series"']
+        },
+        {path: '/about-the-lab/', expectedSchema: 'Article'},
+        {path: '/publications/', expectedSchema: 'Article'},
+        {path: '/topics/', expectedSchema: 'Article'},
+        {path: '/archives/', expectedSchema: 'Article'},
+        {path: '/tag/observability/', expectedSchema: 'Series'},
+        {path: '/author/preview/', expectedSchema: 'Person'},
+        {path: '/page/2/', expectBreadcrumbs: false, expectDescription: false}
+    ];
+    for (const route of routes) {
+        await inspectSeoRoute(route);
+    }
+    await inspectSeoRoute({
+        path: '/definitely-not-a-preview-route/',
+        expectedStatus: 404,
+        expectBreadcrumbs: false,
+        expectCanonical: false,
+        expectDescription: false,
+        expectIndexable: false
+    });
+}
+
 async function inspectHome() {
     await navigate('/');
     const state = await evaluate(`(async () => {
@@ -211,6 +365,8 @@ async function inspectHome() {
         await new Promise((resolve) => setTimeout(resolve, 300));
         const backToTop = document.querySelector('[data-back-to-top]');
         const backToTopBox = backToTop?.getBoundingClientRect();
+        const heroImage = document.querySelector('.home-hero__media img');
+        const firstCardImage = document.querySelector('.home-feed .post-card__image img');
         return {
             title: document.title,
             highlightLoaded: Array.from(document.scripts).some((script) => script.src.includes('highlight')),
@@ -225,7 +381,11 @@ async function inspectHome() {
                     && backToTopBox.bottom > window.innerHeight - 120
             ),
             externalMarked: Boolean(external?.closest('li')?.classList.contains('nav-external')),
-            internalMarkedExternal
+            internalMarkedExternal,
+            heroImage: Boolean(heroImage),
+            heroPriority: heroImage?.fetchPriority || '',
+            heroAlt: heroImage?.getAttribute('alt'),
+            firstCardLoading: firstCardImage?.loading || ''
         };
     })()`);
 
@@ -235,6 +395,8 @@ async function inspectHome() {
     check(state.readBelowExcerpt && state.readAlignedWithCopy, 'desktop Read entry link sits below the excerpt', state.bodyColumns);
     check(state.backToTopFixed && state.backToTopNearBottomRight, 'desktop back-to-top floats bottom-right');
     check(state.externalMarked && !state.internalMarkedExternal, 'only external navigation is visibly marked');
+    check(state.heroImage && state.heroPriority === 'high' && state.heroAlt === '', 'homepage cover is an HTML-discoverable decorative LCP candidate', JSON.stringify(state));
+    check(state.firstCardLoading === 'lazy', 'homepage listing images stay lazy behind the prioritized hero', state.firstCardLoading);
 }
 
 async function inspectMobileHome() {
@@ -292,12 +454,49 @@ async function inspectShortArticle() {
             collapsed: layout?.classList.contains('article-layout--without-toc') || false,
             centredOffset: contentBox ? Math.abs((contentBox.left + contentBox.width / 2) - document.documentElement.clientWidth / 2) : 999,
             longTitle: document.querySelector('.article-header')?.classList.contains('article-header--long-title') || false,
-            updatedVisible: Boolean(document.querySelector('.article-meta__updated'))
+            updatedVisible: Boolean(document.querySelector('.article-meta__updated')),
+            seriesVisible: Boolean(document.querySelector('.article-series')),
+            highlightLoaded: Array.from(document.scripts).some((script) => script.src.includes('highlight'))
         };
     })()`);
     check(state.collapsed && state.centredOffset <= 3, 'short articles collapse the empty TOC rail and centre their content', JSON.stringify(state));
     check(state.longTitle, 'very long article titles receive the compact title treatment');
     check(!state.updatedVisible, 'posts do not claim an update without the #updated tag');
+    check(!state.seriesVisible, 'standalone posts do not render an empty series box');
+    check(!state.highlightLoaded, 'code-free articles do not request Highlight.js');
+}
+
+async function inspectListingImagePriority() {
+    await navigate('/tag/observability/');
+    const state = await evaluate(`(() => {
+        const image = document.querySelector('.home-feed .post-card__image img');
+        return {
+            loading: image?.loading || '',
+            priority: image?.fetchPriority || ''
+        };
+    })()`);
+    check(
+        state.loading === 'eager' && state.priority === 'high',
+        'image-led tag archives prioritize the first card as their likely LCP',
+        JSON.stringify(state)
+    );
+}
+
+async function inspectPublicationEmbed() {
+    await navigate('/publications/');
+    const state = await evaluate(`(() => {
+        const iframe = document.querySelector('[data-post-content] iframe');
+        return {
+            loading: iframe?.loading || '',
+            title: iframe?.title || '',
+            wrapped: Boolean(iframe?.closest('.raw-embed-frame'))
+        };
+    })()`);
+    check(
+        state.loading === 'lazy' && Boolean(state.title) && state.wrapped,
+        'technical embeds reserve space and ship lazy, titled markup',
+        JSON.stringify(state)
+    );
 }
 
 async function inspectErrorPage() {
@@ -317,7 +516,11 @@ async function inspectLongArticle() {
         thumbnail?.click();
         await new Promise((resolve) => setTimeout(resolve, 50));
         const related = document.querySelector('.related-post');
+        const seriesLinks = document.querySelectorAll('.article-series a');
+        const currentSeries = document.querySelectorAll('.article-series a[aria-current="page"]');
+        const seriesStatus = document.querySelector('.article-series__status')?.textContent.trim() || '';
         const original = document.querySelector('.image-lightbox__original');
+        const featureImage = document.querySelector('.article-feature-image img');
         const lightboxOpen = document.querySelector('.image-lightbox')?.open || false;
         document.querySelector('.image-lightbox')?.close();
         return {
@@ -326,13 +529,20 @@ async function inspectLongArticle() {
             lightboxOpen,
             originalLink: original?.href || '',
             originalLabel: original?.textContent.trim() || '',
-            relatedAlignment: related ? getComputedStyle(related).justifyContent : ''
+            relatedAlignment: related ? getComputedStyle(related).justifyContent : '',
+            seriesLinks: seriesLinks.length,
+            currentSeries: currentSeries.length,
+            seriesStatus,
+            featurePriority: featureImage?.fetchPriority || ''
         };
     })()`);
     check(state.highlightLoaded, 'Highlight.js remains available on articles');
+    check(state.featurePriority === 'high', 'article feature image receives LCP fetch priority', state.featurePriority);
     check(state.tocLinks >= 6, 'long-article TOC is generated', String(state.tocLinks));
     check(state.lightboxOpen && state.originalLink && state.originalLabel.includes('original'), 'image dialog exposes the original asset', JSON.stringify(state));
     check(state.relatedAlignment === 'flex-start', 'related-post content is top-aligned', state.relatedAlignment);
+    check(state.seriesLinks === 3, 'internal #series tags render a complete server-side research sequence', String(state.seriesLinks));
+    check(state.currentSeries === 1 && /^Part \d+ of 3$/.test(state.seriesStatus), 'series navigation identifies the current part', JSON.stringify(state));
 
     const anchorState = await evaluate(`(async () => {
         const link = document.querySelector('[data-toc] a[href="#build-the-smallest-useful-probe"]');
@@ -434,10 +644,13 @@ async function inspectFooter() {
 
 async function main() {
     await launchBrowser();
+    await inspectSeoContracts();
     await inspectHome();
     await inspectMobileHome();
     await inspectCollapsedNavigation();
     await inspectShortArticle();
+    await inspectListingImagePriority();
+    await inspectPublicationEmbed();
     await inspectErrorPage();
     await inspectLongArticle();
     await inspectFooter();

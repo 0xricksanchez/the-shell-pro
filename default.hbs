@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="dark">
     <meta name="theme-color" content="#111822">
+    {{#unless @site.is_private}}<meta name="robots" content="max-image-preview:large">{{/unless}}
     <title>{{meta_title}}</title>
     <link rel="stylesheet" href="{{asset "css/screen.css"}}">
     {{#if @site.accent_color}}
@@ -92,10 +93,6 @@
     </footer>
 
     {{ghost_foot}}
-    {{#is "post, page"}}
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" referrerpolicy="no-referrer"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/x86asm.min.js" referrerpolicy="no-referrer"></script>
-    {{/is}}
     <script src="{{asset "js/shell.js"}}"></script>
 </body>
 </html>

@@ -1,11 +1,18 @@
 {{!< default}}
 
+{{#post}}
 <main id="main-content" class="site-main">
     <header class="listing-header">
+        {{> "breadcrumbs" current=title}}
         <p class="eyebrow">// index</p>
-        <h1>Archive</h1>
-        <p>The latest 100 published entries.</p>
+        <h1>{{title}}</h1>
+        {{#if custom_excerpt}}<p>{{custom_excerpt}}</p>{{else}}<p>The latest 100 published entries.</p>{{/if}}
     </header>
+    {{#if html}}
+        <section class="archive-list__intro article-content">
+            {{content}}
+        </section>
+    {{/if}}
     <section class="archive-list" aria-label="Archive">
         {{#get "posts" limit="100" order="published_at desc"}}
             {{#foreach posts}}
@@ -18,3 +25,4 @@
         {{/get}}
     </section>
 </main>
+{{/post}}

@@ -3,6 +3,7 @@
 {{#post}}
 <main id="main-content" class="site-main site-main--topics">
     <header class="listing-header">
+        {{> "breadcrumbs" current=title}}
         <p class="eyebrow">// research index</p>
         <h1>{{title}}</h1>
         {{#if custom_excerpt}}<p>{{custom_excerpt}}</p>{{/if}}

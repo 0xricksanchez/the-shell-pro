@@ -5,13 +5,14 @@
     <article class="article {{post_class}}">
         <header class="article-header">
             <div class="article-header__content">
+                {{> "breadcrumbs" current=title}}
                 {{> "post-type"}}
                 <p class="eyebrow">{{#primary_tag}}<a href="{{url}}">// {{name}}</a>{{else}}// field note{{/primary_tag}}</p>
                 <h1>{{title}}</h1>
                 {{#if custom_excerpt}}<p class="article-header__excerpt">{{custom_excerpt}}</p>{{/if}}
                 <div class="article-meta">
                     {{#primary_author}}
-                        {{#if profile_image}}<img src="{{img_url profile_image size="xs"}}" alt="{{name}}">{{/if}}
+                        {{#if profile_image}}<img src="{{img_url profile_image size="xs"}}" alt="{{name}}" width="24" height="24">{{/if}}
                         <a href="{{url}}">{{name}}</a>
                     {{/primary_author}}
                     <span aria-hidden="true">·</span>
@@ -39,7 +40,8 @@
                                     {{img_url feature_image size="l"}} 1600w,
                                     {{img_url feature_image size="xl"}} 2400w"
                             sizes="(min-width: 1280px) 1120px, 92vw"
-                            alt="{{#if feature_image_alt}}{{feature_image_alt}}{{else}}{{title}}{{/if}}">
+                            alt="{{#if feature_image_alt}}{{feature_image_alt}}{{/if}}"
+                            fetchpriority="high">
                     </picture>
                     {{#if feature_image_caption}}<figcaption>{{feature_image_caption}}</figcaption>{{/if}}
                 </figure>
@@ -58,6 +60,8 @@
         </div>
 
         <footer class="article-footer">
+            {{> "series"}}
+
             <section
                 class="article-actions"
                 data-article-actions
@@ -89,7 +93,7 @@
                 <section class="author-list" aria-label="Authors">
                     {{#foreach authors}}
                         <article class="author-card">
-                            {{#if profile_image}}<img src="{{img_url profile_image size="xs"}}" alt="{{name}}">{{/if}}
+                            {{#if profile_image}}<img src="{{img_url profile_image size="xs"}}" alt="{{name}}" width="48" height="48" loading="lazy">{{/if}}
                             <div>
                                 <h2><a href="{{url}}">{{name}}</a></h2>
                                 {{#if bio}}<p>{{bio}}</p>{{/if}}

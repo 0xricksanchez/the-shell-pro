@@ -133,6 +133,18 @@ async function configurePreviewNavigation(cookie) {
         body: JSON.stringify({
             settings: [
                 {
+                    key: 'description',
+                    value: 'First-hand systems and security research with reproducible technical notes.'
+                },
+                {
+                    key: 'meta_title',
+                    value: 'The Shell Pro — Preview'
+                },
+                {
+                    key: 'meta_description',
+                    value: 'First-hand systems and security research with reproducible technical notes.'
+                },
+                {
                     key: 'navigation',
                     value: JSON.stringify([
                         {label: 'Topics', url: `${baseUrl}/topics/`},
@@ -152,6 +164,44 @@ async function configurePreviewNavigation(cookie) {
     });
 }
 
+async function configurePreviewAuthor(cookie) {
+    const response = await request('/users/me/', {
+        headers: {Cookie: cookie}
+    });
+    const user = (await response.json()).users[0];
+    await request(`/users/${user.id}/`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            Cookie: cookie
+        },
+        body: JSON.stringify({
+            users: [{
+                bio: 'Security and systems researcher documenting reproducible experiments.',
+                website: 'https://example.test/research',
+                updated_at: user.updated_at
+            }]
+        })
+    });
+}
+
+async function configurePreviewTag(slug, fields, cookie) {
+    const response = await request(`/tags/slug/${slug}/`, {
+        headers: {Cookie: cookie}
+    });
+    const tag = (await response.json()).tags[0];
+    await request(`/tags/${tag.id}/`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            Cookie: cookie
+        },
+        body: JSON.stringify({
+            tags: [{...fields, updated_at: tag.updated_at}]
+        })
+    });
+}
+
 async function configureCustomThemeSettings(cookie) {
     await request('/custom_theme_settings/', {
         method: 'PUT',
@@ -164,6 +214,19 @@ async function configureCustomThemeSettings(cookie) {
                 {key: 'pgp_fingerprint', value: '3F2A 91C4 D06B 5A7E 22C1 09AB 44E0 7F10 8C55 21DA'},
                 {key: 'pgp_key_url', value: 'https://example.test/pgp.asc'}
             ]
+        })
+    });
+}
+
+async function configurePreviewCover(coverImage, cookie) {
+    await request('/settings/', {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            Cookie: cookie
+        },
+        body: JSON.stringify({
+            settings: [{key: 'cover_image', value: coverImage}]
         })
     });
 }
@@ -193,10 +256,12 @@ async function main() {
         headers: {Cookie: cookie}
     });
     await configurePreviewNavigation(cookie);
+    await configurePreviewAuthor(cookie);
     await configureCustomThemeSettings(cookie);
 
     const telemetryImageUrl = await uploadPreviewImage('telemetry-loop.svg', cookie);
     const budgetImageUrl = await uploadPreviewImage('failure-budget.svg', cookie);
+    await configurePreviewCover(telemetryImageUrl, cookie);
     const postHtml = `
         <p>Most systems become difficult to operate long before they become difficult to build. The first release has a few machines, a few endpoints, and one or two people who remember where every timeout came from. Then traffic rises, dependencies multiply, and the useful shape of the system is no longer visible from any single log line.</p>
 
@@ -395,12 +460,14 @@ curl --silent --show-error http://localhost:4318/v1/traces \\
         title: 'Tracing the edge: a 200 ms feedback loop for distributed systems',
         slug: 'tracing-the-edge-200ms-feedback-loop',
         custom_excerpt: 'A long-form field note on traces, latency budgets, adaptive sampling, and the small control loops that make systems easier to operate.',
+        meta_title: 'Tracing a 200 ms distributed-systems feedback loop',
+        meta_description: 'Build a reproducible observability loop using latency budgets, traces, adaptive sampling, and explainable operating policies.',
         feature_image: telemetryImageUrl,
         feature_image_alt: 'Telemetry feedback loop diagram',
         feature_image_caption: 'The preview article uses a technical diagram as its feature image.',
         html: postHtml,
         status: 'published',
-        tags: ['Observability', 'Systems', 'Architecture', 'Field Note', 'Preview']
+        tags: ['Observability', 'Systems', 'Architecture', 'Field Note', 'Preview', '#series: Operating feedback loops']
     };
     const post = await upsertEntry('posts', previewPost, cookie);
 
@@ -411,7 +478,7 @@ curl --silent --show-error http://localhost:4318/v1/traces \\
             custom_excerpt: 'A short operating note on testing failure paths without borrowing production risk.',
             html: '<p>Run fault injection against a representative boundary, not the whole fleet. The smallest useful experiment gives you a known failure mode, a clear rollback, and an observation that can survive a handover.</p><blockquote><strong>Method:</strong> Start with one dependency and one reversible pressure signal before attempting a system-wide exercise.</blockquote><h2>Evidence &amp; references</h2><ol><li><a href="https://sre.google/sre-book/handling-overload/">Google SRE: Handling overload</a></li></ol>',
             status: 'published',
-            tags: ['Observability', 'Systems', 'Lab Log', 'Preview']
+            tags: ['Observability', 'Systems', 'Lab Log', 'Preview', '#series: Operating feedback loops']
         }},
         {resource: 'posts', entry: {
             title: 'The contract at a tracing boundary is a compatibility surface',
@@ -419,7 +486,7 @@ curl --silent --show-error http://localhost:4318/v1/traces \\
             custom_excerpt: 'Why trace context, timeout budgets, and event schemas deserve versioned contracts.',
             html: '<p>Instrumentation crosses proxies, queues, runtimes, and teams. Once another component relies on that context, the boundary becomes a compatibility surface rather than an implementation detail.</p><blockquote><strong>Finding:</strong> A short explicit contract prevents silent context loss more effectively than another dashboard.</blockquote><h2>Evidence &amp; references</h2><ol><li><a href="https://www.w3.org/TR/trace-context/">W3C Trace Context</a></li></ol>',
             status: 'published',
-            tags: ['Observability', 'Architecture', 'Field Note', 'Preview']
+            tags: ['Observability', 'Architecture', 'Field Note', 'Preview', '#series: Operating feedback loops']
         }},
         {resource: 'posts', entry: {
             title: 'Breaking a deliberately long technical title before it consumes the entire first viewport on a research note',
@@ -433,6 +500,8 @@ curl --silent --show-error http://localhost:4318/v1/traces \\
             title: 'Topics',
             slug: 'topics',
             custom_excerpt: 'Browse the active research threads in this publication.',
+            meta_title: 'Systems and security research topics',
+            meta_description: 'Browse reproducible systems and security research by durable technical topic.',
             html: '<p>This directory is driven by ordinary Ghost tags. Add a public subject tag to a post and it becomes a browsable research thread; semantic post-type tags stay out of the directory.</p>',
             status: 'published'
         }},
@@ -440,17 +509,30 @@ curl --silent --show-error http://localhost:4318/v1/traces \\
             title: 'Publications',
             slug: 'publications',
             custom_excerpt: 'A raw HTML-card fixture for responsive technical embeds.',
-            html: '<ol><li>File system fuzzing applied to the BSD operating systems:</li></ol><iframe src="https://docs.google.com/presentation/d/e/2PACX-1vTj9Th51zNyOxsywQamc5S0wQ_mLM3KFVoMeFWuPYPFNaIS0qp53luTP40dE0lGPQ/embed?start=false&amp;loop=false&amp;delayms=3000" frameborder="0" width="1280" height="749" allowfullscreen="true"></iframe><p><a href="https://docs.google.com/presentation/d/e/2PACX-1vTj9Th51zNyOxsywQamc5S0wQ_mLM3KFVoMeFWuPYPFNaIS0qp53luTP40dE0lGPQ/pub?start=false&amp;loop=false&amp;delayms=3000">Open the presentation</a></p><h3>Misc. Disclosures</h3><ol><li>Example research disclosure</li></ol><h3>Villages</h3><ol><li>Example conference appearance</li></ol>',
+            meta_title: 'Technical publications and presentations',
+            meta_description: 'Conference presentations, technical publications, disclosures, and research appearances.',
+            html: '<ol><li>File system fuzzing applied to the BSD operating systems:</li></ol><iframe src="https://docs.google.com/presentation/d/e/2PACX-1vTj9Th51zNyOxsywQamc5S0wQ_mLM3KFVoMeFWuPYPFNaIS0qp53luTP40dE0lGPQ/embed?start=false&amp;loop=false&amp;delayms=3000" loading="lazy" title="File system fuzzing presentation slides" frameborder="0" width="1280" height="749" allowfullscreen="true"></iframe><p><a href="https://docs.google.com/presentation/d/e/2PACX-1vTj9Th51zNyOxsywQamc5S0wQ_mLM3KFVoMeFWuPYPFNaIS0qp53luTP40dE0lGPQ/pub?start=false&amp;loop=false&amp;delayms=3000">Open the presentation</a></p><h3>Misc. Disclosures</h3><ol><li>Example research disclosure</li></ol><h3>Villages</h3><ol><li>Example conference appearance</li></ol>',
             status: 'published'
         }},
         {resource: 'pages', entry: {
             title: 'About the lab',
             slug: 'about-the-lab',
             custom_excerpt: 'A compact static-page example with the same reading tools as a technical article.',
+            meta_title: 'About the research lab',
+            meta_description: 'Research methodology, working principles, and evidence standards behind The Shell Pro.',
             feature_image: budgetImageUrl,
             feature_image_alt: 'Latency budget waterfall',
             feature_image_caption: 'Static pages may now carry a responsive feature image.',
             html: '<p>This page demonstrates how a normal Ghost Page can carry a cover image without becoming a bespoke theme route.</p><h2>Working principles</h2><p>Keep an experiment legible, preserve its evidence, and publish the smallest useful artifact.</p>',
+            status: 'published'
+        }},
+        {resource: 'pages', entry: {
+            title: 'Archives',
+            slug: 'archives',
+            custom_excerpt: 'Browse the technical research log in reverse chronological order.',
+            meta_title: 'Technical research archive',
+            meta_description: 'Browse the complete chronological archive of systems and security research notes.',
+            html: '<p>Every public research note remains reachable here, including older experiments that are still useful as historical technical references.</p>',
             status: 'published'
         }}
     ];
@@ -461,8 +543,30 @@ curl --silent --show-error http://localhost:4318/v1/traces \\
         await upsertEntry(resource, entry, cookie);
     }
 
+    const paginationFixtures = Array.from({length: 7}, (_, index) => ({
+        title: `SEO contract fixture ${String(index + 1).padStart(2, '0')}: crawlable archive entry`,
+        slug: `seo-contract-fixture-${String(index + 1).padStart(2, '0')}`,
+        custom_excerpt: 'A compact preview entry used to verify crawlable pagination, canonical metadata, and archive discovery.',
+        feature_image: index === 6 ? telemetryImageUrl : undefined,
+        feature_image_alt: index === 6 ? 'Telemetry loop used as a preview indexing fixture' : undefined,
+        html: '<p>This server-rendered fixture gives the preview enough public entries to exercise the second archive page and its canonical URL.</p><h2>Verification target</h2><p>The entry must remain reachable through ordinary anchor links.</p>',
+        status: 'published',
+        tags: ['Observability', 'Field Note', 'Preview']
+    }));
+    for (const entry of paginationFixtures) {
+        await upsertEntry('posts', entry, cookie);
+    }
+
+    await configurePreviewTag('observability', {
+        description: 'Reproducible work on traces, latency budgets, telemetry contracts, and operating feedback loops.',
+        meta_title: 'Observability research and engineering notes',
+        meta_description: 'Technical notes on distributed tracing, latency budgets, telemetry contracts, and explainable system operation.',
+        feature_image: telemetryImageUrl
+    }, cookie);
+
     console.log(`Preview updated: ${new URL(post.url, baseUrl).href}`);
     console.log(`Topic directory: ${baseUrl}/topics/`);
+    console.log(`Archive: ${baseUrl}/archives/`);
 }
 
 main().catch((error) => {

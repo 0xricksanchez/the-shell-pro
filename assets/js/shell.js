@@ -3,6 +3,42 @@
     'use strict';
 
     var doc = document;
+    var highlightBase = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/';
+
+    function loadScript(source) {
+        return new Promise(function (resolve, reject) {
+            var existing = doc.querySelector('script[src="' + source + '"]');
+            if (existing) {
+                if (existing.dataset.loaded === 'true') {
+                    resolve();
+                    return;
+                }
+                existing.addEventListener('load', resolve, {once: true});
+                existing.addEventListener('error', reject, {once: true});
+                return;
+            }
+
+            var script = doc.createElement('script');
+            script.src = source;
+            script.referrerPolicy = 'no-referrer';
+            script.addEventListener('load', function () {
+                script.dataset.loaded = 'true';
+                resolve();
+            }, {once: true});
+            script.addEventListener('error', reject, {once: true});
+            doc.head.appendChild(script);
+        });
+    }
+
+    function loadSyntaxHighlighting() {
+        if (!doc.querySelector('[data-post-content] pre > code') || window.hljs) {
+            return Promise.resolve();
+        }
+        return loadScript(highlightBase + 'highlight.min.js')
+            .then(function () {
+                return loadScript(highlightBase + 'languages/x86asm.min.js');
+            });
+    }
 
     function registerTechnicalAliases() {
         if (!window.hljs || typeof window.hljs.registerAliases !== 'function') {
@@ -133,6 +169,16 @@
                 return;
             }
 
+            if (!iframe.hasAttribute('title')) {
+                var host = '';
+                try {
+                    host = new URL(iframe.src, doc.baseURI).hostname;
+                } catch (error) {
+                    // Keep the generic accessible title for malformed URLs.
+                }
+                iframe.title = host ? 'Embedded content from ' + host : 'Embedded content';
+            }
+
             var width = Number(iframe.getAttribute('width'));
             var height = Number(iframe.getAttribute('height'));
             if (!(width > 0 && height > 0)) {
@@ -184,6 +230,29 @@
         if (length >= 108) {
             header.classList.add('article-header--very-long-title');
         }
+    }
+
+    function enhanceSeriesNavigation() {
+        doc.querySelectorAll('.article-series').forEach(function (series) {
+            var heading = series.querySelector('h2');
+            var links = Array.from(series.querySelectorAll('ol a'));
+            var currentIndex = links.findIndex(function (link) {
+                return link.pathname === window.location.pathname;
+            });
+            if (heading) {
+                heading.textContent = heading.textContent.replace(/^#series:\s*/i, '');
+            }
+            if (currentIndex < 0) {
+                return;
+            }
+            var current = links[currentIndex];
+            current.setAttribute('aria-current', 'page');
+            current.closest('li').classList.add('article-series__current');
+            var status = doc.createElement('p');
+            status.className = 'article-series__status';
+            status.textContent = 'Part ' + (currentIndex + 1) + ' of ' + links.length;
+            heading.insertAdjacentElement('afterend', status);
+        });
     }
 
     function researchBlockKind(label) {
@@ -476,6 +545,9 @@
         });
 
         content.querySelectorAll('img').forEach(function (thumbnail) {
+            if (!thumbnail.hasAttribute('alt')) {
+                thumbnail.alt = '';
+            }
             if (thumbnail.closest('a') || thumbnail.closest('.kg-emoji-card')) {
                 return;
             }
@@ -638,11 +710,10 @@
     }
 
     function initialize() {
-        registerTechnicalAliases();
-        enhanceCodeBlocks();
         enhanceRawEmbeds();
         enhanceFigures();
         enhanceArticleTitle();
+        enhanceSeriesNavigation();
         enhanceToc();
         enhanceResearchSections();
         enhanceResearchBlocks();
@@ -652,6 +723,13 @@
         setupBackToTop();
         setupReadingProgress();
         setupArticleActions();
+        loadSyntaxHighlighting().catch(function () {
+            // Code stays readable and receives the local toolbar even when the
+            // optional highlighter cannot be loaded.
+        }).then(function () {
+            registerTechnicalAliases();
+            enhanceCodeBlocks();
+        });
     }
 
     if (doc.readyState === 'loading') {

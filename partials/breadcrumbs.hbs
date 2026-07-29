@@ -1,0 +1,19 @@
+<nav class="breadcrumbs" aria-label="Breadcrumb" itemscope itemtype="https://schema.org/BreadcrumbList">
+    <ol>
+        <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+            <a itemprop="item" href="{{@site.url}}"><span itemprop="name">Home</span></a>
+            <meta itemprop="position" content="1">
+        </li>
+        {{#primary_tag}}
+            <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+                <a itemprop="item" href="{{url absolute="true"}}"><span itemprop="name">{{name}}</span></a>
+                <meta itemprop="position" content="2">
+            </li>
+        {{/primary_tag}}
+        <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem" aria-current="page">
+            <span itemprop="name">{{current}}</span>
+            <meta itemprop="item" content="{{url absolute="true"}}">
+            <meta itemprop="position" content="{{#if primary_tag}}3{{else}}2{{/if}}">
+        </li>
+    </ol>
+</nav>

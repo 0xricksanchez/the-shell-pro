@@ -3,6 +3,7 @@
 {{#tag}}
 <main id="main-content" class="site-main">
     <header class="listing-header">
+        {{> "breadcrumbs" current=name}}
         <p class="eyebrow">// tag</p>
         <h1>{{name}}</h1>
         {{#if description}}<p>{{description}}</p>{{/if}}
@@ -10,7 +11,7 @@
 {{/tag}}
     <section class="post-feed home-feed archive-feed" aria-label="Posts in this tag">
         {{#foreach posts}}
-            {{> "post-card"}}
+            {{> "post-card" eager_image=@first}}
         {{/foreach}}
     </section>
     {{pagination}}

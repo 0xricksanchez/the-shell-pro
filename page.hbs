@@ -6,6 +6,7 @@
         {{#if @page.show_title_and_feature_image}}
             <header class="article-header">
                 <div class="article-header__content">
+                    {{> "breadcrumbs" current=title}}
                     <p class="eyebrow">// reference</p>
                     <h1>{{title}}</h1>
                     {{#if custom_excerpt}}<p class="article-header__excerpt">{{custom_excerpt}}</p>{{/if}}
@@ -25,13 +26,17 @@
                                         {{img_url feature_image size="l"}} 1600w,
                                         {{img_url feature_image size="xl"}} 2400w"
                                 sizes="(min-width: 1280px) 1120px, 92vw"
-                                alt="{{#if feature_image_alt}}{{feature_image_alt}}{{else}}{{title}}{{/if}}">
+                                alt="{{#if feature_image_alt}}{{feature_image_alt}}{{/if}}"
+                                fetchpriority="high">
                         </picture>
                         {{#if feature_image_caption}}<figcaption>{{feature_image_caption}}</figcaption>{{/if}}
                     </figure>
                 {{/if}}
             </header>
         {{/if}}
+        {{#unless @page.show_title_and_feature_image}}
+            <h1 class="visually-hidden">{{title}}</h1>
+        {{/unless}}
         <div class="article-layout">
             <aside class="article-toc" data-toc-container>
                 <nav class="toc" data-toc aria-label="Table of contents">

@@ -1,0 +1,20 @@
+{{#foreach tags visibility="internal"}}
+    {{#match slug "~" "hash-series-"}}
+        <section class="article-series" aria-labelledby="series-{{slug}}">
+            <div class="article-series__heading">
+                <p class="eyebrow">// research sequence</p>
+                <h2 id="series-{{slug}}">{{name}}</h2>
+            </div>
+            {{#get "posts" limit="100" order="published_at asc" filter="tag:{{slug}}"}}
+                <ol>
+                    {{#foreach posts}}
+                        <li>
+                            <span aria-hidden="true">{{@number}}</span>
+                            <a href="{{url}}">{{title}}</a>
+                        </li>
+                    {{/foreach}}
+                </ol>
+            {{/get}}
+        </section>
+    {{/match}}
+{{/foreach}}

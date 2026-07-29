@@ -1,25 +1,7 @@
 {{!< default}}
 
 <main id="main-content" class="site-main site-main--home">
-    <header class="home-hero"{{#if @site.cover_image}} style="--hero-image: url({{img_url @site.cover_image size="l" format="webp"}}); --hero-image-small: url({{img_url @site.cover_image size="s" format="webp"}});"{{/if}}>
-        <div class="home-hero__grid" aria-hidden="true"></div>
-        <div class="home-hero__content">
-            <p class="eyebrow">// technical transmission</p>
-            <h1>{{@site.title}}</h1>
-            {{#if @site.description}}<p>{{@site.description}}</p>{{/if}}
-            <ul class="home-hero__status" aria-label="Publication status">
-                <li><span aria-hidden="true"></span> channel open</li>
-                <li>Ghost 6</li>
-                <li>research / engineering</li>
-            </ul>
-            <div class="home-hero__actions">
-                <a class="button" href="#latest">Read latest <span aria-hidden="true">↓</span></a>
-                {{#if @site.members_enabled}}
-                    <a class="button button--quiet" href="#/portal/signup">Get updates</a>
-                {{/if}}
-            </div>
-        </div>
-    </header>
+    {{> "home-hero"}}
 
     <section class="lab-index" aria-label="Research topics">
         <div class="lab-index__heading">

@@ -1,0 +1,40 @@
+<header class="home-hero">
+    {{#if @site.cover_image}}
+        <picture class="home-hero__media" aria-hidden="true">
+            <source
+                media="(max-width: 700px)"
+                type="image/webp"
+                srcset="{{img_url @site.cover_image size="s" format="webp"}} 600w"
+                sizes="100vw">
+            <source
+                type="image/webp"
+                srcset="{{img_url @site.cover_image size="s" format="webp"}} 600w,
+                        {{img_url @site.cover_image size="m" format="webp"}} 1000w,
+                        {{img_url @site.cover_image size="l" format="webp"}} 1600w,
+                        {{img_url @site.cover_image size="xl" format="webp"}} 2400w"
+                sizes="(min-width: 1280px) 1240px, calc(100vw - 3rem)">
+            <img
+                src="{{img_url @site.cover_image size="l" format="webp"}}"
+                alt=""
+                fetchpriority="high">
+        </picture>
+    {{/if}}
+    <div class="home-hero__scrim" aria-hidden="true"></div>
+    <div class="home-hero__grid" aria-hidden="true"></div>
+    <div class="home-hero__content">
+        <p class="eyebrow">// technical transmission</p>
+        <h1>{{@site.title}}</h1>
+        {{#if @site.description}}<p>{{@site.description}}</p>{{/if}}
+        <ul class="home-hero__status" aria-label="Publication status">
+            <li><span aria-hidden="true"></span> channel open</li>
+            <li>Ghost 6</li>
+            <li>research / engineering</li>
+        </ul>
+        <div class="home-hero__actions">
+            <a class="button" href="#latest">Read latest <span aria-hidden="true">↓</span></a>
+            {{#if @site.members_enabled}}
+                <a class="button button--quiet" href="#/portal/signup">Get updates</a>
+            {{/if}}
+        </div>
+    </div>
+</header>
