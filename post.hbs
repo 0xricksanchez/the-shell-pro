@@ -74,6 +74,12 @@
                 <div>
                     <p class="eyebrow">// transmit</p>
                     <p>Save a durable link or copy a citation for your notes.</p>
+                    {{#if tags}}
+                        <div class="article-actions__tags">
+                            <span>filed under</span>
+                            {{tags separator=""}}
+                        </div>
+                    {{/if}}
                 </div>
                 <div class="article-actions__buttons">
                     <button type="button" class="article-action" data-copy-link>Copy link</button>
@@ -81,13 +87,6 @@
                     <button type="button" class="article-action" data-native-share hidden>Share</button>
                 </div>
             </section>
-
-            {{#if tags}}
-                <section class="article-tags" aria-label="Tags">
-                    <span>Tags</span>
-                    {{tags separator=""}}
-                </section>
-            {{/if}}
 
             {{#if authors}}
                 <section class="author-list" aria-label="Authors">
@@ -105,17 +104,18 @@
 
             <section class="article-neighbours" aria-label="Adjacent entries">
                 <p class="eyebrow">// continue reading</p>
-                <div class="article-neighbours__grid">
+                <div class="article-neighbours__strip">
                     {{#prev_post}}
                         <a class="article-neighbour article-neighbour--previous" href="{{url}}">
-                            <span>← Previous entry</span>
+                            <span>← Prev</span>
                             <strong>{{title}}</strong>
                         </a>
                     {{/prev_post}}
+                    <span class="article-neighbours__sep" aria-hidden="true"></span>
                     {{#next_post}}
                         <a class="article-neighbour article-neighbour--next" href="{{url}}">
-                            <span>Next entry →</span>
                             <strong>{{title}}</strong>
+                            <span>Next →</span>
                         </a>
                     {{/next_post}}
                 </div>

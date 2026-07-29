@@ -580,7 +580,7 @@
     function markCurrentNavigation() {
         // Ghost only sets nav-current on an exact URL match, so a navigation
         // item saved as /Publications/ never lights up on /publications/.
-        var links = Array.from(doc.querySelectorAll('.site-nav__menu a'));
+        var links = Array.from(doc.querySelectorAll('.site-nav__menu a, .footer-nav__links a'));
         function isSameSite(link) {
             if (link.origin === window.location.origin) {
                 return true;

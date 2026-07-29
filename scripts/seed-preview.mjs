@@ -212,7 +212,16 @@ async function configureCustomThemeSettings(cookie) {
         body: JSON.stringify({
             custom_theme_settings: [
                 {key: 'pgp_fingerprint', value: '3F2A 91C4 D06B 5A7E 22C1 09AB 44E0 7F10 8C55 21DA'},
-                {key: 'pgp_key_url', value: 'https://example.test/pgp.asc'}
+                {key: 'pgp_key_url', value: 'https://example.test/pgp.asc'},
+                {key: 'social_github', value: 'https://github.com/example'},
+                {key: 'social_twitter', value: 'https://x.com/example'},
+                {key: 'social_bluesky', value: 'https://bsky.app/profile/example.test'},
+                {key: 'social_mastodon', value: 'https://infosec.exchange/@example'},
+                {key: 'social_linkedin', value: 'https://www.linkedin.com/in/example/'},
+                {key: 'social_discord', value: 'https://discord.gg/example'},
+                {key: 'social_hackthebox', value: 'https://app.hackthebox.com/profile/1337'},
+                {key: 'social_custom_url', value: 'https://hackerone.com/example'},
+                {key: 'social_custom_label', value: 'HackerOne'}
             ]
         })
     });

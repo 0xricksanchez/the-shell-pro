@@ -595,6 +595,34 @@ async function inspectLongArticle() {
     check(mobileToc.position === 'sticky' && mobileToc.toggleHeight >= 40, 'mobile TOC remains reachable as a sticky, touch-sized control', JSON.stringify(mobileToc));
 }
 
+async function inspectEndmatter() {
+    await navigate('/tracing-the-edge-200ms-feedback-loop/');
+    const desktop = await evaluate(`(() => {
+        const actions = document.querySelector('.article-actions');
+        const strip = document.querySelector('.article-neighbours__strip');
+        const stripBox = strip?.getBoundingClientRect();
+        return {
+            tagInsideTransmit: Boolean(actions?.querySelector('.article-actions__tags a')),
+            standaloneTagsGone: !document.querySelector('section.article-tags'),
+            stripHeight: stripBox ? Math.round(stripBox.height) : 0
+        };
+    })()`);
+    check(desktop.tagInsideTransmit, 'transmit panel carries the post tags');
+    check(desktop.standaloneTagsGone, 'standalone tags section is gone');
+    check(desktop.stripHeight > 0 && desktop.stripHeight <= 88, 'continue-reading strip is a slim single row', String(desktop.stripHeight));
+
+    await navigate('/tracing-the-edge-200ms-feedback-loop/', 390, 844);
+    const mobile = await evaluate(`(() => {
+        const links = Array.from(document.querySelectorAll('.article-neighbours__strip a'));
+        const overflow = document.documentElement.scrollWidth - document.documentElement.clientWidth;
+        if (links.length < 2) { return {stacked: links.length === 1, overflow}; }
+        const [a, b] = links.map((link) => link.getBoundingClientRect());
+        return {stacked: b.top >= a.bottom, overflow};
+    })()`);
+    check(mobile.stacked, 'continue-reading strip stacks on mobile');
+    check(mobile.overflow <= 0, 'article page has no horizontal overflow on mobile', String(mobile.overflow));
+}
+
 async function inspectFooter() {
     await navigate('/');
     const desktop = await evaluate(`(() => {
@@ -614,13 +642,19 @@ async function inspectFooter() {
             transmissionDate: transmissionTime?.getAttribute('datetime') || '',
             transmissionHref,
             pgpText: pgp?.textContent.replace(/\\s+/g, ' ').trim() || '',
-            railLinks: footer ? footer.querySelectorAll('.site-footer__rail .site-footer__links a').length : 0,
+            railLinks: footer ? footer.querySelectorAll('.site-footer__rail a').length : 0,
             transmissionColorMatchesText: (() => {
                 const link = transmission?.querySelector('a');
                 if (!link) return false;
                 const resolve = (value) => { const probe = document.createElement('span'); probe.style.color = value; document.body.appendChild(probe); const c = getComputedStyle(probe).color; probe.remove(); return c; };
                 return getComputedStyle(link).color === resolve('var(--shell-text)');
-            })()
+            })(),
+            socialAnchors: Array.from(footer?.querySelectorAll('.site-footer__rail .social-links a') || []).map((link) => ({
+                label: link.getAttribute('aria-label') || '',
+                me: (link.getAttribute('rel') || '').split(' ').includes('me')
+            })),
+            socialTextLinkGone: !Array.from(footer?.querySelectorAll('.site-footer__rail a') || []).some((link) => link.textContent.trim() === 'Social'),
+            memberLink: Array.from(footer?.querySelectorAll('.site-footer__rail a') || []).some((link) => link.textContent.trim() === 'Member account')
         };
     })()`);
     check(desktop.navLabels.length >= 2, 'footer navigate column renders the secondary navigation', JSON.stringify(desktop.navLabels));
@@ -631,6 +665,11 @@ async function inspectFooter() {
     check(desktop.minTarget >= 32, 'footer navigate links are touch-sized', String(desktop.minTarget));
     check(desktop.transmissionColorMatchesText, 'footer transmission link uses the text color, not the muted color');
     check(desktop.railLinks >= 3, 'footer utility rail keeps the publication links', String(desktop.railLinks));
+    check(desktop.socialAnchors.length >= 9, 'footer rail renders the social icon row', String(desktop.socialAnchors.length));
+    check(desktop.socialAnchors.every((anchor) => anchor.label.length > 0), 'every social icon has an accessible label');
+    check(desktop.socialAnchors.filter((anchor) => anchor.me).length >= 8, 'profile icons carry rel=me for identity verification', JSON.stringify(desktop.socialAnchors));
+    check(desktop.socialTextLinkGone, 'the vague Social text link is gone');
+    check(desktop.memberLink, 'member account link survives in the rail');
 
     await navigate('/', 390, 844);
     const mobile = await evaluate(`(() => {
@@ -654,6 +693,7 @@ async function main() {
     await inspectErrorPage();
     await inspectLongArticle();
     await inspectFooter();
+    await inspectEndmatter();
     if (failures.length) {
         throw new Error(`${failures.length} preview check${failures.length === 1 ? '' : 's'} failed`);
     }
