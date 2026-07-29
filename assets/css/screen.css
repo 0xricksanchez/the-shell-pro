@@ -145,6 +145,21 @@ button:focus-visible,
     z-index: 30;
     top: 0;
     border-bottom: 1px solid color-mix(in srgb, var(--shell-border) 74%, transparent);
+}
+
+/*
+ * The blurred glass background lives on a pseudo-element rather than directly on
+ * .site-header. A `backdrop-filter` on the header itself would make it the containing
+ * block for any `position: fixed` descendant (per spec, same as `filter`/`transform`),
+ * which would trap the floating .back-to-top button inside the header box instead of
+ * anchoring it to the viewport. The pseudo-element reproduces the identical look
+ * without being an ancestor of .back-to-top.
+ */
+.site-header::before {
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    content: "";
     background: rgba(17, 24, 34, .88);
     backdrop-filter: blur(16px);
 }
@@ -242,8 +257,7 @@ button:focus-visible,
     gap: .5rem;
 }
 
-.icon-button,
-.back-to-top {
+.icon-button {
     display: inline-grid;
     width: 2rem;
     height: 2rem;
@@ -255,10 +269,30 @@ button:focus-visible,
     cursor: pointer;
 }
 
-.icon-button:hover,
-.back-to-top:hover {
+.icon-button:hover {
     border-color: var(--shell-accent);
     color: var(--shell-accent);
+}
+
+.back-to-top {
+    position: fixed;
+    z-index: 40;
+    right: 1.4rem;
+    bottom: 1.4rem;
+    display: inline-grid;
+    width: 2.4rem;
+    height: 2.4rem;
+    padding: 0;
+    place-items: center;
+    border: 1px solid var(--shell-accent);
+    color: var(--shell-accent);
+    background: rgba(17, 24, 34, .92);
+    cursor: pointer;
+}
+
+.back-to-top:hover {
+    color: #07130f;
+    background: var(--shell-accent);
 }
 
 .button {
@@ -1773,12 +1807,6 @@ button:focus-visible,
     gap: .65rem;
 }
 
-.site-actions .back-to-top {
-    border-color: color-mix(in srgb, var(--shell-accent) 55%, var(--shell-border));
-    color: var(--shell-accent);
-    background: rgba(53, 224, 161, .06);
-}
-
 .site-footer {
     border-top: 1px solid var(--shell-border);
     background: #0d131c;
@@ -2116,6 +2144,21 @@ button:focus-visible,
 
     .site-actions .button {
         display: none;
+    }
+
+    .back-to-top {
+        position: static;
+        width: 2rem;
+        height: 2rem;
+        border: 1px solid var(--shell-border);
+        color: var(--shell-muted);
+        background: transparent;
+    }
+
+    .back-to-top:hover {
+        border-color: var(--shell-accent);
+        color: var(--shell-accent);
+        background: transparent;
     }
 
     .post-feed {

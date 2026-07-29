@@ -190,7 +190,7 @@ async function evaluate(expression) {
 
 async function inspectHome() {
     await navigate('/');
-    const state = await evaluate(`(() => {
+    const state = await evaluate(`(async () => {
         const card = Array.from(document.querySelectorAll('.home-feed .post-card')).find((item) =>
             item.querySelector('h2')?.textContent.includes('deliberately long technical title')
         ) || document.querySelector('.home-feed .post-card');
@@ -207,6 +207,10 @@ async function inspectHome() {
             ['Topics', 'About'].includes(link.textContent.trim())
                 && link.closest('li')?.classList.contains('nav-external')
         );
+        window.scrollTo(0, 1000);
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        const backToTop = document.querySelector('[data-back-to-top]');
+        const backToTopBox = backToTop?.getBoundingClientRect();
         return {
             title: document.title,
             highlightLoaded: Array.from(document.scripts).some((script) => script.src.includes('highlight')),
@@ -214,7 +218,12 @@ async function inspectHome() {
             readBelowExcerpt: Boolean(readBox && excerptBox && readBox.top >= excerptBox.bottom - 1),
             readAlignedWithCopy: Boolean(readBox && excerptBox && Math.abs(readBox.left - excerptBox.left) <= 3),
             bodyColumns: body ? getComputedStyle(body).gridTemplateColumns : '',
-            backToTopInHeader: Boolean(document.querySelector('[data-back-to-top]')?.closest('.site-actions')),
+            backToTopFixed: Boolean(backToTop && getComputedStyle(backToTop).position === 'fixed'),
+            backToTopNearBottomRight: Boolean(
+                backToTopBox
+                    && backToTopBox.right > window.innerWidth - 120
+                    && backToTopBox.bottom > window.innerHeight - 120
+            ),
             externalMarked: Boolean(external?.closest('li')?.classList.contains('nav-external')),
             internalMarkedExternal
         };
@@ -224,7 +233,7 @@ async function inspectHome() {
     check(!state.highlightLoaded, 'Highlight.js stays off listing pages');
     check(!state.fallbackBadge, 'unclassified cards omit the fallback Research note badge');
     check(state.readBelowExcerpt && state.readAlignedWithCopy, 'desktop Read entry link sits below the excerpt', state.bodyColumns);
-    check(state.backToTopInHeader, 'back-to-top control lives in the header instead of covering content');
+    check(state.backToTopFixed && state.backToTopNearBottomRight, 'desktop back-to-top floats bottom-right');
     check(state.externalMarked && !state.internalMarkedExternal, 'only external navigation is visibly marked');
 }
 
@@ -240,15 +249,18 @@ async function inspectMobileHome() {
         const bodyBox = body?.getBoundingClientRect();
         const readBox = read?.getBoundingClientRect();
         const excerptBox = excerpt?.getBoundingClientRect();
+        const backToTop = document.querySelector('[data-back-to-top]');
         return {
             cardDisplay: card ? getComputedStyle(card).display : '',
             imageWidth: imageBox?.width || 0,
             bodyWidth: bodyBox?.width || 0,
-            readBelowExcerpt: Boolean(readBox && excerptBox && readBox.top >= excerptBox.bottom - 1)
+            readBelowExcerpt: Boolean(readBox && excerptBox && readBox.top >= excerptBox.bottom - 1),
+            backToTopPosition: backToTop ? getComputedStyle(backToTop).position : ''
         };
     })()`);
     check(Math.abs(state.imageWidth - state.bodyWidth) <= 2, 'mobile post-card image and body use the full card width', JSON.stringify(state));
     check(state.readBelowExcerpt, 'mobile Read entry link stays below the excerpt');
+    check(state.backToTopPosition !== 'fixed', 'mobile back-to-top stays in the header', state.backToTopPosition);
 }
 
 async function inspectCollapsedNavigation() {
