@@ -4,13 +4,13 @@
   "description": "A Ghost in the Shell-inspired technical publishing theme for Ghost 6.",
   "license": "GPL-3.0",
   "author": {
-    "name": "Neulana",
-    "email": "fupinyou@gmail.com",
-    "url": "https://github.com/Neulana"
+    "name": "0x434b",
+    "email": "mail@0x434b.dev",
+    "url": "https://0x434b.dev"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/Neulana/the-shell-pro.git"
+    "url": "https://github.com/0xricksanchez/the-shell-pro.git"
   },
   "engines": {
     "ghost": ">=6.0.0",
