@@ -79,8 +79,7 @@
         return match ? match[1] : '';
     }
 
-    function languageName(code) {
-        var identifier = languageIdentifier(code);
+    function languageName(identifier) {
         return identifier ? identifier.replace(/[-_]/g, ' ') : 'code';
     }
 
@@ -149,7 +148,7 @@
             }
             var label = doc.createElement('span');
             label.className = 'shell-code-toolbar__language';
-            label.textContent = languageName(code);
+            label.textContent = languageName(language);
             identity.appendChild(label);
             var button = doc.createElement('button');
             button.type = 'button';

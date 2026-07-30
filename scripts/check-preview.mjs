@@ -597,6 +597,49 @@ async function inspectUnknownCodeFallback() {
     }
 }
 
+async function inspectUntypedCodeLabel() {
+    const injection = await client.send('Page.addScriptToEvaluateOnNewDocument', {
+        source: `
+            document.addEventListener('DOMContentLoaded', () => {
+                const content = document.querySelector('[data-post-content]');
+                if (!content) return;
+                const pre = document.createElement('pre');
+                const code = document.createElement('code');
+                code.textContent = '.audit { color: red; }\\n.mobile { display: block; }';
+                pre.dataset.qualitySweep = 'untyped-code-label';
+                pre.appendChild(code);
+                content.prepend(pre);
+            }, {once: true});
+        `
+    });
+    try {
+        await navigate('/tracing-the-edge-200ms-feedback-loop/');
+        const state = await evaluate(`(async () => {
+            await new Promise((resolve) => setTimeout(resolve, 100));
+            const injected = document.querySelector('[data-quality-sweep="untyped-code-label"]');
+            const code = injected?.querySelector('code');
+            const wrapper = injected?.closest('.shell-code-block');
+            return {
+                wrapped: Boolean(wrapper),
+                highlighted: code?.classList.contains('hljs') || false,
+                inferredLanguage: Array.from(code?.classList || [])
+                    .find((name) => name.startsWith('language-')) || '',
+                label: wrapper?.querySelector('.shell-code-toolbar__language')?.textContent.trim() || ''
+            };
+        })()`);
+        check(
+            state.wrapped
+                && state.highlighted
+                && Boolean(state.inferredLanguage)
+                && state.label === 'code',
+            'untyped code keeps a neutral toolbar label after syntax auto-detection',
+            JSON.stringify(state)
+        );
+    } finally {
+        await client.send('Page.removeScriptToEvaluateOnNewDocument', {identifier: injection.identifier});
+    }
+}
+
 async function inspectHighlighterFailureFallback() {
     await client.send('Network.enable');
     await client.send('Network.setCacheDisabled', {cacheDisabled: true});
@@ -1272,6 +1315,7 @@ async function main() {
     await inspectListingImagePriority();
     await inspectPublicationEmbed();
     await inspectUnknownCodeFallback();
+    await inspectUntypedCodeLabel();
     await inspectHighlighterFailureFallback();
     await inspectAccessibilityTree();
     await inspectResponsiveBoundaries();
