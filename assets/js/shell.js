@@ -4,6 +4,9 @@
 
     var doc = document;
     var highlightBase = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/';
+    var codeWrapKey = 'the-shell-pro:code-wrap';
+    var readerPreferencesKey = 'the-shell-pro:reader';
+    var longCodeThreshold = 24;
 
     function loadScript(source) {
         return new Promise(function (resolve, reject) {
@@ -83,6 +86,27 @@
         return identifier ? identifier.replace(/[-_]/g, ' ') : 'code';
     }
 
+    function readStorage(key) {
+        try {
+            return window.localStorage.getItem(key);
+        } catch (error) {
+            return null;
+        }
+    }
+
+    function writeStorage(key, value) {
+        try {
+            if (value === null) {
+                window.localStorage.removeItem(key);
+            } else {
+                window.localStorage.setItem(key, value);
+            }
+        } catch (error) {
+            // Preferences remain available for the current page when storage
+            // is unavailable or deliberately blocked.
+        }
+    }
+
     function filenameFor(pre, code) {
         return pre.dataset.filename || code.dataset.filename || '';
     }
@@ -99,7 +123,7 @@
     function addLineNumbers(wrapper, code) {
         var lineCount = code.textContent.replace(/\n$/, '').split('\n').length;
         if (lineCount < 2) {
-            return;
+            return lineCount;
         }
         var numbers = doc.createElement('ol');
         numbers.className = 'code-line-numbers';
@@ -111,28 +135,77 @@
         }
         wrapper.classList.add('shell-code-block--numbered');
         wrapper.appendChild(numbers);
+        return lineCount;
+    }
+
+    function safeDownloadName(file, language) {
+        var name = (file || '').split(/[\\/]/).filter(Boolean).pop() || '';
+        name = name.replace(/[\u0000-\u001f<>:"|?*]/g, '-').trim();
+        if (name) {
+            return name;
+        }
+        return 'code-snippet' + (language ? '.' + language.replace(/[^a-z0-9]+/gi, '') : '.txt');
+    }
+
+    function downloadCode(source, file, language) {
+        var name = safeDownloadName(file, language);
+        var url = URL.createObjectURL(new Blob([source], {type: 'text/plain;charset=utf-8'}));
+        var link = doc.createElement('a');
+        link.href = url;
+        link.download = name;
+        link.hidden = true;
+        doc.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.setTimeout(function () { URL.revokeObjectURL(url); }, 0);
+    }
+
+    function createCodeButton(className, label, accessibleLabel) {
+        var button = doc.createElement('button');
+        button.type = 'button';
+        button.className = 'shell-code-action ' + className;
+        button.textContent = label;
+        button.setAttribute('aria-label', accessibleLabel);
+        return button;
+    }
+
+    function setCodeWrapping(wrapped, persist) {
+        doc.querySelectorAll('.shell-code-block').forEach(function (wrapper) {
+            wrapper.classList.toggle('shell-code-block--wrapped', wrapped);
+            var button = wrapper.querySelector('[data-code-wrap]');
+            if (button) {
+                button.setAttribute('aria-pressed', String(wrapped));
+                button.textContent = wrapped ? 'Scroll' : 'Wrap';
+                button.setAttribute('aria-label', wrapped ? 'Use scrolling code lines' : 'Wrap long code lines');
+            }
+        });
+        if (persist) {
+            writeStorage(codeWrapKey, wrapped ? 'wrap' : 'scroll');
+        }
     }
 
     function enhanceCodeBlocks() {
+        var preferredWrap = readStorage(codeWrapKey) === 'wrap';
+        var used = new Set(Array.from(doc.querySelectorAll('[id]')).map(function (element) {
+            return element.id;
+        }));
+        var codeIndex = 0;
         doc.querySelectorAll('[data-post-content] pre > code').forEach(function (code) {
             var pre = code.parentElement;
-            var file = filenameFor(pre, code) || filenameFromSource(code);
-            var language = languageIdentifier(code);
-            if (window.hljs && !code.dataset.highlighted && (!language || window.hljs.getLanguage(language))) {
-                try {
-                    window.hljs.highlightElement(code);
-                } catch (error) {
-                    // Highlighting is optional; preserve the readable local
-                    // code-block UI if a third-party grammar fails.
-                }
-            }
-
             if (pre.parentElement.classList.contains('shell-code-block')) {
                 return;
             }
+            codeIndex += 1;
+            ensureId(pre, 'code-source-' + codeIndex, used);
+            var file = filenameFor(pre, code) || filenameFromSource(code);
+            var language = languageIdentifier(code);
+            var source = code.textContent;
+            code.dataset.shellLanguage = language;
 
             var wrapper = doc.createElement('div');
             wrapper.className = 'shell-code-block';
+            wrapper.dataset.filename = file;
+            wrapper.dataset.language = language;
             pre.parentNode.insertBefore(wrapper, pre);
             wrapper.appendChild(pre);
 
@@ -150,23 +223,84 @@
             label.className = 'shell-code-toolbar__language';
             label.textContent = languageName(language);
             identity.appendChild(label);
-            var button = doc.createElement('button');
-            button.type = 'button';
-            button.className = 'copy-code';
-            button.textContent = 'Copy';
-            button.setAttribute('aria-label', 'Copy code block');
-            button.addEventListener('click', function () {
-                copyText(code.textContent).then(function () {
-                    button.textContent = 'Copied';
-                    setTimeout(function () { button.textContent = 'Copy'; }, 1600);
+
+            var actions = doc.createElement('span');
+            actions.className = 'shell-code-toolbar__actions';
+            var wrap = createCodeButton('shell-code-wrap', 'Wrap', 'Wrap long code lines');
+            wrap.dataset.codeWrap = '';
+            wrap.setAttribute('aria-pressed', 'false');
+            wrap.addEventListener('click', function () {
+                setCodeWrapping(wrap.getAttribute('aria-pressed') !== 'true', true);
+            });
+            actions.appendChild(wrap);
+
+            if (file) {
+                var download = createCodeButton(
+                    'shell-code-download',
+                    'Download',
+                    'Download ' + safeDownloadName(file, language)
+                );
+                download.dataset.codeDownload = '';
+                download.addEventListener('click', function () {
+                    try {
+                        downloadCode(source, file, language);
+                        actionFeedback(download, 'Saved');
+                    } catch (error) {
+                        actionFeedback(download, 'Download failed');
+                    }
+                });
+                actions.appendChild(download);
+            }
+
+            var copy = createCodeButton('copy-code', 'Copy', 'Copy code block');
+            copy.addEventListener('click', function () {
+                copyText(source).then(function () {
+                    copy.textContent = 'Copied';
+                    setTimeout(function () { copy.textContent = 'Copy'; }, 1600);
                 }).catch(function () {
-                    button.textContent = 'Copy failed';
+                    copy.textContent = 'Copy failed';
                 });
             });
+            actions.appendChild(copy);
 
-            toolbar.append(identity, button);
+            toolbar.append(identity, actions);
             wrapper.insertBefore(toolbar, pre);
-            addLineNumbers(wrapper, code);
+            var lineCount = addLineNumbers(wrapper, code);
+
+            if (lineCount > longCodeThreshold) {
+                wrapper.classList.add('shell-code-block--collapsible', 'shell-code-block--collapsed');
+                var expand = createCodeButton(
+                    'shell-code-expand',
+                    'Show all ' + lineCount + ' lines',
+                    'Show all ' + lineCount + ' lines'
+                );
+                expand.dataset.codeExpand = '';
+                expand.setAttribute('aria-expanded', 'false');
+                expand.setAttribute('aria-controls', pre.id);
+                expand.addEventListener('click', function () {
+                    var expanded = expand.getAttribute('aria-expanded') !== 'true';
+                    wrapper.classList.toggle('shell-code-block--collapsed', !expanded);
+                    expand.setAttribute('aria-expanded', String(expanded));
+                    expand.textContent = expanded ? 'Collapse to 16-line preview' : 'Show all ' + lineCount + ' lines';
+                    expand.setAttribute('aria-label', expand.textContent);
+                });
+                wrapper.appendChild(expand);
+            }
+        });
+        setCodeWrapping(preferredWrap, false);
+    }
+
+    function highlightCodeBlocks() {
+        doc.querySelectorAll('[data-post-content] pre > code').forEach(function (code) {
+            var language = code.dataset.shellLanguage || '';
+            if (window.hljs && !code.dataset.highlighted && (!language || window.hljs.getLanguage(language))) {
+                try {
+                    window.hljs.highlightElement(code);
+                } catch (error) {
+                    // Highlighting is optional; preserve the readable local
+                    // code-block UI if a third-party grammar fails.
+                }
+            }
         });
     }
 
@@ -309,46 +443,119 @@
             .replace(/^-+|-+$/g, '') || 'section';
     }
 
-    function enhanceToc() {
-        var content = doc.querySelector('[data-post-content]');
-        var toc = doc.querySelector('[data-toc]');
-        var container = doc.querySelector('[data-toc-container]');
-        if (!content || !toc || !container) {
-            return;
+    function ensureId(element, preferred, used) {
+        if (element.id) {
+            used.add(element.id);
+            return element.id;
         }
+        var base = preferred;
+        var id = base;
+        var count = 2;
+        while (used.has(id)) {
+            id = base + '-' + count;
+            count += 1;
+        }
+        element.id = id;
+        used.add(id);
+        return id;
+    }
 
-        var used = new Set(Array.from(doc.querySelectorAll('[id]')).map(function (element) { return element.id; }));
-        var headings = Array.from(content.querySelectorAll('h1, h2, h3, h4, h5'));
-        headings.forEach(function (heading) {
-            if (heading.id) {
-                return;
-            }
-            var base = slugify(heading.textContent);
-            var id = base;
-            var count = 2;
-            while (used.has(id)) {
-                id = base + '-' + count;
-                count += 1;
-            }
-            used.add(id);
-            heading.id = id;
+    function conciseLabel(value, fallback) {
+        var label = (value || '').replace(/\s+/g, ' ').trim();
+        if (!label) {
+            return fallback;
+        }
+        return label.length > 76 ? label.slice(0, 73).trimEnd() + '…' : label;
+    }
+
+    function createArticleModel() {
+        var content = doc.querySelector('[data-post-content]');
+        if (!content) {
+            return null;
+        }
+        var used = new Set(Array.from(doc.querySelectorAll('[id]')).map(function (element) {
+            return element.id;
+        }));
+        var sections = Array.from(content.querySelectorAll('h1, h2, h3, h4, h5'));
+        sections.forEach(function (heading) {
+            ensureId(heading, slugify(heading.textContent), used);
         });
 
-        if (headings.length < 2) {
-            container.hidden = true;
-            var layout = container.closest('.article-layout');
-            if (layout) {
-                layout.classList.add('article-layout--without-toc');
+        var candidates = [];
+        content.querySelectorAll('.shell-code-block').forEach(function (element) {
+            candidates.push({element: element, type: 'code'});
+        });
+        content.querySelectorAll('figure').forEach(function (element) {
+            if (element.querySelector('pre') || element.classList.contains('kg-file-card')) {
+                return;
             }
-            return;
-        }
+            candidates.push({element: element, type: 'figure'});
+        });
+        content.querySelectorAll('table').forEach(function (element) {
+            candidates.push({element: element, type: 'table'});
+        });
+        content.querySelectorAll('.kg-file-card').forEach(function (element) {
+            candidates.push({element: element, type: 'file'});
+        });
+        content.querySelectorAll('.research-section--evidence').forEach(function (element) {
+            candidates.push({element: element, type: 'evidence'});
+        });
+        candidates.sort(function (left, right) {
+            return left.element.compareDocumentPosition(right.element) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1;
+        });
 
+        var typeCounts = {};
+        var artifacts = candidates.map(function (candidate) {
+            typeCounts[candidate.type] = (typeCounts[candidate.type] || 0) + 1;
+            var index = typeCounts[candidate.type];
+            var label = '';
+            if (candidate.type === 'code') {
+                label = candidate.element.dataset.filename
+                    || (candidate.element.dataset.language
+                        ? languageName(candidate.element.dataset.language) + ' snippet'
+                        : 'Code snippet');
+            } else if (candidate.type === 'figure') {
+                var caption = candidate.element.querySelector('figcaption');
+                var image = candidate.element.querySelector('img');
+                label = (caption && caption.textContent) || (image && image.alt) || 'Research figure';
+            } else if (candidate.type === 'table') {
+                var tableCaption = candidate.element.querySelector('caption');
+                var firstHeading = candidate.element.querySelector('th');
+                label = (tableCaption && tableCaption.textContent)
+                    || (firstHeading && firstHeading.textContent)
+                    || 'Data table';
+            } else if (candidate.type === 'file') {
+                var fileTitle = candidate.element.querySelector(
+                    '.kg-file-card-title, .kg-file-card-filename, a[download]'
+                );
+                label = (fileTitle && fileTitle.textContent) || 'Downloadable file';
+            } else {
+                var evidenceHeading = candidate.element.querySelector('h2, h3');
+                label = (evidenceHeading && evidenceHeading.textContent) || 'Evidence trail';
+            }
+            return {
+                element: candidate.element,
+                id: ensureId(candidate.element, candidate.type + '-' + index, used),
+                index: index,
+                label: conciseLabel(label, 'Research artifact'),
+                type: candidate.type
+            };
+        });
+
+        return {
+            content: content,
+            sections: sections,
+            artifacts: artifacts
+        };
+    }
+
+    function outlineNavigation(sections) {
         var list = doc.createElement('ol');
         list.className = 'toc__list';
-        list.id = 'article-toc-list';
+        list.id = 'article-outline-list';
         var links = new Map();
         var outline = [];
-        headings.forEach(function (heading) {
+        sections.forEach(function (heading) {
             var level = Number(heading.tagName.slice(1));
             var item = doc.createElement('li');
             item.className = 'toc__item toc__item--level-' + level;
@@ -374,49 +581,241 @@
             outline.push({level: level, item: item, childList: null});
             links.set(heading.id, link);
         });
+        return {list: list, links: links};
+    }
+
+    function artifactNavigation(artifacts) {
+        var labels = {
+            code: 'Code',
+            figure: 'Figure',
+            table: 'Table',
+            file: 'File',
+            evidence: 'Evidence'
+        };
+        var list = doc.createElement('ol');
+        list.className = 'toc__artifact-list';
+        list.id = 'article-artifact-list';
+        var links = new Map();
+        artifacts.forEach(function (artifact) {
+            var item = doc.createElement('li');
+            item.className = 'toc__artifact-item toc__artifact-item--' + artifact.type;
+            var link = doc.createElement('a');
+            link.href = '#' + artifact.id;
+            var kind = doc.createElement('span');
+            kind.className = 'toc__artifact-kind';
+            kind.textContent = labels[artifact.type] + ' ' + String(artifact.index).padStart(2, '0') + ' ';
+            var label = doc.createElement('span');
+            label.className = 'toc__artifact-label';
+            label.textContent = artifact.label;
+            link.append(kind, label);
+            item.appendChild(link);
+            list.appendChild(item);
+            links.set(artifact.id, link);
+        });
+        return {list: list, links: links};
+    }
+
+    function enhanceArticleNavigation(model) {
+        var toc = doc.querySelector('[data-toc]');
+        var container = doc.querySelector('[data-toc-container]');
+        if (!model || !toc || !container) {
+            return;
+        }
+        var sections = model.sections.length >= 2 ? model.sections : [];
+        var artifacts = model.artifacts.length >= 2 ? model.artifacts : [];
+        var layout = container.closest('.article-layout');
+        if (!sections.length && !artifacts.length) {
+            container.hidden = true;
+            if (layout) {
+                layout.classList.add('article-layout--without-toc');
+            }
+            return;
+        }
+        container.hidden = false;
+        if (layout) {
+            layout.classList.remove('article-layout--without-toc');
+        }
+
+        var title = toc.querySelector('.toc__title');
+        title.textContent = sections.length && artifacts.length
+            ? 'Research map'
+            : (sections.length ? 'On this page' : 'Artifacts');
         var count = doc.createElement('p');
         count.className = 'toc__count';
-        count.textContent = headings.length + ' waypoints';
-        toc.querySelector('.toc__title').insertAdjacentElement('afterend', count);
-        toc.appendChild(list);
-
-        function setActiveHeading(id) {
-            links.forEach(function (link) { link.removeAttribute('aria-current'); });
-            var active = links.get(id);
-            if (active) {
-                active.setAttribute('aria-current', 'location');
-                if (!window.matchMedia('(max-width: 900px)').matches) {
-                    var tocBox = toc.getBoundingClientRect();
-                    var activeBox = active.getBoundingClientRect();
-                    var breathingRoom = 4;
-                    if (activeBox.top < tocBox.top + breathingRoom) {
-                        toc.scrollTop += activeBox.top - tocBox.top - breathingRoom;
-                    } else if (activeBox.bottom > tocBox.bottom - breathingRoom) {
-                        toc.scrollTop += activeBox.bottom - tocBox.bottom + breathingRoom;
-                    }
-                }
-            }
-        }
+        title.insertAdjacentElement('afterend', count);
 
         var toggle = doc.createElement('button');
         toggle.type = 'button';
         toggle.className = 'toc__toggle';
-        toggle.setAttribute('aria-controls', list.id);
+        toggle.setAttribute('aria-controls', 'article-navigation');
+        count.insertAdjacentElement('afterend', toggle);
+
+        var body = doc.createElement('div');
+        body.className = 'toc__body';
+        body.id = 'article-navigation';
+        toc.appendChild(body);
+
+        var views = {};
+        if (sections.length) {
+            var outline = outlineNavigation(sections);
+            var outlinePanel = doc.createElement('div');
+            outlinePanel.className = 'toc__panel';
+            outlinePanel.id = 'article-outline-panel';
+            outlinePanel.dataset.tocPanel = 'outline';
+            outlinePanel.appendChild(outline.list);
+            views.outline = {
+                count: sections.length,
+                items: sections,
+                label: 'waypoints',
+                links: outline.links,
+                panel: outlinePanel
+            };
+        }
+        if (artifacts.length) {
+            var artifact = artifactNavigation(artifacts);
+            var artifactPanel = doc.createElement('div');
+            artifactPanel.className = 'toc__panel';
+            artifactPanel.id = 'article-artifact-panel';
+            artifactPanel.dataset.tocPanel = 'artifacts';
+            artifactPanel.appendChild(artifact.list);
+            views.artifacts = {
+                count: artifacts.length,
+                items: artifacts.map(function (item) { return item.element; }),
+                label: 'artifacts',
+                links: artifact.links,
+                panel: artifactPanel
+            };
+        }
+
+        var viewNames = Object.keys(views);
+        var activeView = viewNames[0];
+        var tabs = new Map();
+        if (viewNames.length > 1) {
+            toc.classList.add('toc--mapped');
+            var tablist = doc.createElement('div');
+            tablist.className = 'toc__tabs';
+            tablist.setAttribute('role', 'tablist');
+            tablist.setAttribute('aria-label', 'Article navigation');
+            viewNames.forEach(function (name) {
+                var tab = doc.createElement('button');
+                tab.type = 'button';
+                tab.className = 'toc__tab';
+                tab.id = 'article-' + name + '-tab';
+                tab.dataset.tocView = name;
+                tab.setAttribute('role', 'tab');
+                tab.setAttribute('aria-controls', views[name].panel.id);
+                tab.innerHTML = (name === 'outline' ? 'Outline' : 'Artifacts')
+                    + ' <span>' + views[name].count + '</span>';
+                tabs.set(name, tab);
+                tablist.appendChild(tab);
+                views[name].panel.setAttribute('role', 'tabpanel');
+                views[name].panel.setAttribute('aria-labelledby', tab.id);
+            });
+            body.appendChild(tablist);
+        }
+        viewNames.forEach(function (name) {
+            body.appendChild(views[name].panel);
+        });
+
+        function currentDescription() {
+            var view = views[activeView];
+            return view.count + ' ' + view.label;
+        }
 
         function setTocExpanded(expanded) {
             toc.classList.toggle('toc--expanded', expanded);
             toggle.setAttribute('aria-expanded', String(expanded));
-            toggle.textContent = (expanded ? 'Hide' : 'Show') + ' ' + headings.length + ' waypoints';
+            toggle.textContent = (expanded ? 'Hide ' : 'Show ') + currentDescription();
+        }
+
+        function setView(name, focus) {
+            if (!views[name]) {
+                return;
+            }
+            activeView = name;
+            toc.dataset.activeView = name;
+            viewNames.forEach(function (viewName) {
+                var selected = viewName === name;
+                views[viewName].panel.hidden = !selected;
+                var tab = tabs.get(viewName);
+                if (tab) {
+                    tab.setAttribute('aria-selected', String(selected));
+                    tab.tabIndex = selected ? 0 : -1;
+                }
+            });
+            count.textContent = currentDescription();
+            setTocExpanded(toc.classList.contains('toc--expanded'));
+            viewNames.forEach(function (viewName) {
+                if (viewName !== name) {
+                    setCurrent(views[viewName].links, '');
+                }
+            });
+            scheduleActiveNavigationUpdate();
+            if (focus && tabs.get(name)) {
+                tabs.get(name).focus();
+            }
+        }
+
+        tabs.forEach(function (tab, name) {
+            tab.addEventListener('click', function () { setView(name, false); });
+            tab.addEventListener('keydown', function (event) {
+                if (!/^(?:ArrowLeft|ArrowRight|Home|End)$/.test(event.key)) {
+                    return;
+                }
+                event.preventDefault();
+                var index = viewNames.indexOf(name);
+                if (event.key === 'Home') index = 0;
+                if (event.key === 'End') index = viewNames.length - 1;
+                if (event.key === 'ArrowLeft') index = (index - 1 + viewNames.length) % viewNames.length;
+                if (event.key === 'ArrowRight') index = (index + 1) % viewNames.length;
+                setView(viewNames[index], true);
+            });
+        });
+
+        function keepLinkVisible(active) {
+            if (!active || window.matchMedia('(max-width: 900px)').matches || !active.offsetParent) {
+                return;
+            }
+            var tocBox = toc.getBoundingClientRect();
+            var activeBox = active.getBoundingClientRect();
+            var breathingRoom = 4;
+            if (activeBox.top < tocBox.top + breathingRoom) {
+                toc.scrollTop += activeBox.top - tocBox.top - breathingRoom;
+            } else if (activeBox.bottom > tocBox.bottom - breathingRoom) {
+                toc.scrollTop += activeBox.bottom - tocBox.bottom + breathingRoom;
+            }
+        }
+
+        function setCurrent(links, id) {
+            links.forEach(function (link) { link.removeAttribute('aria-current'); });
+            var active = links.get(id);
+            if (active) {
+                active.setAttribute('aria-current', 'location');
+                keepLinkVisible(active);
+            }
+        }
+
+        function activeItem(items) {
+            var readingLine = window.innerHeight * 0.28;
+            var active = items[0];
+            items.forEach(function (item) {
+                if (item.getBoundingClientRect().top <= readingLine) {
+                    active = item;
+                }
+            });
+            return active;
         }
 
         toc.classList.add('toc--collapsible');
-        setTocExpanded(false);
+        setView(activeView, false);
         toggle.addEventListener('click', function () {
             setTocExpanded(!toc.classList.contains('toc--expanded'));
         });
-        list.addEventListener('click', function () {
+        body.addEventListener('click', function (event) {
             if (window.matchMedia('(max-width: 900px)').matches) {
-                setTocExpanded(false);
+                if (event.target.closest('a')) {
+                    setTocExpanded(false);
+                }
             }
         });
         doc.addEventListener('click', function (event) {
@@ -434,31 +833,26 @@
                 toggle.focus();
             }
         });
-        count.insertAdjacentElement('afterend', toggle);
 
-        var activeHeadingFrame;
+        var activeNavigationFrame;
         var hashTargetId;
-        function updateActiveHeading() {
-            activeHeadingFrame = null;
+        function updateActiveNavigation() {
+            activeNavigationFrame = null;
             if (hashTargetId) {
-                setActiveHeading(hashTargetId);
+                setCurrent(views[activeView].links, hashTargetId);
                 return;
             }
-            var readingLine = window.innerHeight * 0.28;
-            var activeHeading = headings[0];
-            headings.forEach(function (heading) {
-                if (heading.getBoundingClientRect().top <= readingLine) {
-                    activeHeading = heading;
-                }
-            });
-            setActiveHeading(activeHeading.id);
+            var active = activeItem(views[activeView].items);
+            if (active) {
+                setCurrent(views[activeView].links, active.id);
+            }
         }
 
-        function scheduleActiveHeadingUpdate() {
-            if (activeHeadingFrame) {
+        function scheduleActiveNavigationUpdate() {
+            if (activeNavigationFrame) {
                 return;
             }
-            activeHeadingFrame = window.requestAnimationFrame(updateActiveHeading);
+            activeNavigationFrame = window.requestAnimationFrame(updateActiveNavigation);
         }
 
         function pinToHashTarget(instant) {
@@ -472,18 +866,18 @@
                     return;
                 }
                 target.scrollIntoView(instant ? {block: 'start', behavior: 'instant'} : {block: 'start'});
-                setActiveHeading(target.id);
+                setCurrent(views[activeView].links, target.id);
             });
         }
 
         function releaseHashTarget() {
             if (hashTargetId) {
                 hashTargetId = null;
-                scheduleActiveHeadingUpdate();
+                scheduleActiveNavigationUpdate();
             }
         }
 
-        window.addEventListener('scroll', scheduleActiveHeadingUpdate, {passive: true});
+        window.addEventListener('scroll', scheduleActiveNavigationUpdate, {passive: true});
         ['wheel', 'touchmove', 'pointerdown'].forEach(function (type) {
             window.addEventListener(type, releaseHashTarget, {passive: true});
         });
@@ -492,7 +886,7 @@
                 releaseHashTarget();
             }
         });
-        window.addEventListener('resize', scheduleActiveHeadingUpdate);
+        window.addEventListener('resize', scheduleActiveNavigationUpdate);
 
         function resolveHashTarget() {
             if (!window.location.hash) {
@@ -510,13 +904,18 @@
                 return;
             }
             hashTargetId = target.id;
+            if (views.artifacts && views.artifacts.links.has(target.id)) {
+                setView('artifacts', false);
+            } else if (views.outline && views.outline.links.has(target.id)) {
+                setView('outline', false);
+            }
             pinToHashTarget(false);
         }
 
         // Lazy images without reserved dimensions shift the article as they
         // load, dragging an anchored heading away from the viewport; keep
         // re-anchoring until the reader takes over scrolling themselves.
-        content.querySelectorAll('img').forEach(function (image) {
+        model.content.querySelectorAll('img').forEach(function (image) {
             if (image.complete) {
                 return;
             }
@@ -527,7 +926,7 @@
 
         resolveHashTarget();
         window.addEventListener('hashchange', resolveHashTarget);
-        scheduleActiveHeadingUpdate();
+        scheduleActiveNavigationUpdate();
     }
 
     function enhanceResearchSections() {
@@ -535,11 +934,15 @@
         if (!content) {
             return;
         }
+        var used = new Set(Array.from(doc.querySelectorAll('[id]')).map(function (element) {
+            return element.id;
+        }));
         Array.from(content.querySelectorAll('h2')).forEach(function (heading) {
             var label = heading.textContent.trim().toLowerCase();
             if (!/(evidence|references|sources|further reading)/.test(label)) {
                 return;
             }
+            ensureId(heading, slugify(heading.textContent), used);
             var section = doc.createElement('section');
             section.className = 'research-section research-section--evidence';
             section.setAttribute('aria-labelledby', heading.id);
@@ -552,6 +955,142 @@
                 next = following;
             }
         });
+    }
+
+    function setupReaderTools() {
+        var article = doc.querySelector('.article');
+        var content = doc.querySelector('[data-post-content]');
+        var trigger = doc.querySelector('[data-reader-settings]');
+        var dialog = doc.querySelector('[data-reader-dialog]');
+        if (!article || !content || !trigger || !dialog || typeof dialog.showModal !== 'function') {
+            return;
+        }
+
+        var defaults = {
+            text: 'default',
+            measure: 'standard',
+            contrast: 'normal',
+            focus: false
+        };
+        var allowed = {
+            text: ['compact', 'default', 'large'],
+            measure: ['focused', 'standard', 'wide'],
+            contrast: ['normal', 'high']
+        };
+        var preferences = Object.assign({}, defaults);
+        var stored = readStorage(readerPreferencesKey);
+        if (stored) {
+            try {
+                var parsed = JSON.parse(stored);
+                Object.keys(allowed).forEach(function (name) {
+                    if (allowed[name].includes(parsed[name])) {
+                        preferences[name] = parsed[name];
+                    }
+                });
+                preferences.focus = parsed.focus === true;
+            } catch (error) {
+                writeStorage(readerPreferencesKey, null);
+            }
+        }
+
+        function syncControls() {
+            dialog.querySelectorAll('[data-reader-text]').forEach(function (button) {
+                button.setAttribute('aria-pressed', String(button.dataset.readerText === preferences.text));
+            });
+            dialog.querySelectorAll('[data-reader-measure]').forEach(function (button) {
+                button.setAttribute('aria-pressed', String(button.dataset.readerMeasure === preferences.measure));
+            });
+            dialog.querySelectorAll('[data-reader-contrast]').forEach(function (button) {
+                button.setAttribute('aria-pressed', String(button.dataset.readerContrast === preferences.contrast));
+            });
+            dialog.querySelector('[data-reader-focus]').setAttribute('aria-pressed', String(preferences.focus));
+        }
+
+        function applyPreferences() {
+            article.dataset.readerText = preferences.text;
+            article.dataset.readerMeasure = preferences.measure;
+            article.dataset.readerContrast = preferences.contrast;
+            doc.body.classList.toggle('reader-focus', preferences.focus);
+            syncControls();
+        }
+
+        function preserveReadingPosition(change) {
+            var anchor = content.firstElementChild;
+            Array.from(content.children).some(function (element) {
+                var box = element.getBoundingClientRect();
+                if (box.top <= 150 && box.bottom > 0) {
+                    anchor = element;
+                    return false;
+                }
+                return box.top > 150;
+            });
+            var before = anchor ? anchor.getBoundingClientRect().top : 0;
+            change();
+            window.requestAnimationFrame(function () {
+                if (anchor && anchor.isConnected) {
+                    window.scrollBy(0, anchor.getBoundingClientRect().top - before);
+                }
+                window.dispatchEvent(new Event('resize'));
+            });
+        }
+
+        function saveAndApply() {
+            applyPreferences();
+            writeStorage(readerPreferencesKey, JSON.stringify(preferences));
+        }
+
+        dialog.querySelectorAll('[data-reader-text]').forEach(function (button) {
+            button.addEventListener('click', function () {
+                preserveReadingPosition(function () {
+                    preferences.text = button.dataset.readerText;
+                    saveAndApply();
+                });
+            });
+        });
+        dialog.querySelectorAll('[data-reader-measure]').forEach(function (button) {
+            button.addEventListener('click', function () {
+                preserveReadingPosition(function () {
+                    preferences.measure = button.dataset.readerMeasure;
+                    saveAndApply();
+                });
+            });
+        });
+        dialog.querySelectorAll('[data-reader-contrast]').forEach(function (button) {
+            button.addEventListener('click', function () {
+                preferences.contrast = button.dataset.readerContrast;
+                saveAndApply();
+            });
+        });
+        dialog.querySelector('[data-reader-focus]').addEventListener('click', function () {
+            preserveReadingPosition(function () {
+                preferences.focus = !preferences.focus;
+                saveAndApply();
+            });
+        });
+        dialog.querySelector('[data-reader-reset]').addEventListener('click', function () {
+            preserveReadingPosition(function () {
+                preferences = Object.assign({}, defaults);
+                applyPreferences();
+                writeStorage(readerPreferencesKey, null);
+            });
+        });
+
+        trigger.addEventListener('click', function () {
+            trigger.setAttribute('aria-expanded', 'true');
+            dialog.showModal();
+        });
+        dialog.addEventListener('click', function (event) {
+            if (event.target === dialog) {
+                dialog.close();
+            }
+        });
+        dialog.addEventListener('close', function () {
+            trigger.setAttribute('aria-expanded', 'false');
+            trigger.focus();
+        });
+
+        applyPreferences();
+        trigger.hidden = false;
     }
 
     function enhanceImages() {
@@ -787,10 +1326,12 @@
         enhanceFigures();
         enhanceArticleTitle();
         enhanceSeriesNavigation();
-        enhanceToc();
         enhanceResearchSections();
         enhanceResearchBlocks();
+        enhanceCodeBlocks();
+        enhanceArticleNavigation(createArticleModel());
         enhanceImages();
+        setupReaderTools();
         markCurrentNavigation();
         setupNavigation();
         setupBackToTop();
@@ -801,7 +1342,7 @@
             // optional highlighter cannot be loaded.
         }).then(function () {
             registerTechnicalAliases();
-            enhanceCodeBlocks();
+            highlightCodeBlocks();
         });
     }
 

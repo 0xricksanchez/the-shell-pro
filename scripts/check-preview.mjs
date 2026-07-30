@@ -348,7 +348,11 @@ async function inspectSeoContracts() {
         {
             path: '/tracing-the-edge-200ms-feedback-loop/',
             expectedSchema: 'Article',
-            initialContent: ['Most systems become difficult to operate', 'class="article-series"']
+            initialContent: [
+                'Most systems become difficult to operate',
+                'class="article-series"',
+                'data-reader-settings'
+            ]
         },
         {path: '/about-the-lab/', expectedSchema: 'Article'},
         {path: '/publications/', expectedSchema: 'Article'},
@@ -516,14 +520,78 @@ async function inspectShortArticle() {
             longTitle: document.querySelector('.article-header')?.classList.contains('article-header--long-title') || false,
             updatedVisible: Boolean(document.querySelector('.article-meta__updated')),
             seriesVisible: Boolean(document.querySelector('.article-series')),
+            navigationTabs: document.querySelectorAll('.toc__tab').length,
+            artifactLinks: document.querySelectorAll('.toc__artifact-list a').length,
             highlightLoaded: Array.from(document.scripts).some((script) => script.src.includes('highlight'))
         };
     })()`);
     check(state.collapsed && state.centredOffset <= 3, 'short articles collapse the empty TOC rail and centre their content', JSON.stringify(state));
+    check(
+        state.navigationTabs === 0 && state.artifactLinks === 0,
+        'artifact navigation disappears completely when it has no useful choices',
+        JSON.stringify(state)
+    );
     check(state.longTitle, 'very long article titles receive the compact title treatment');
     check(!state.updatedVisible, 'posts do not claim an update without the #updated tag');
     check(!state.seriesVisible, 'standalone posts do not render an empty series box');
     check(!state.highlightLoaded, 'code-free articles do not request Highlight.js');
+}
+
+async function inspectAdaptiveArticleNavigation() {
+    async function inspectInjectedArtifacts(count) {
+        const injection = await client.send('Page.addScriptToEvaluateOnNewDocument', {
+            source: `
+                document.addEventListener('DOMContentLoaded', () => {
+                    const content = document.querySelector('[data-post-content]');
+                    if (!content) return;
+                    for (let index = 0; index < ${count}; index += 1) {
+                        const table = document.createElement('table');
+                        table.dataset.qualitySweep = 'adaptive-artifact';
+                        table.innerHTML = '<caption>Probe matrix ' + (index + 1)
+                            + '</caption><tbody><tr><th>Probe</th><td>Ready</td></tr></tbody>';
+                        content.appendChild(table);
+                    }
+                }, {once: true});
+            `
+        });
+        try {
+            await navigate('/long-technical-title-preview/');
+            return await evaluate(`(() => {
+                const container = document.querySelector('[data-toc-container]');
+                const layout = document.querySelector('.article-layout');
+                const links = Array.from(document.querySelectorAll('.toc__artifact-list a'));
+                return {
+                    hidden: container?.hidden || false,
+                    centred: layout?.classList.contains('article-layout--without-toc') || false,
+                    tabs: document.querySelectorAll('.toc__tab').length,
+                    outlineLinks: document.querySelectorAll('.toc__list a').length,
+                    artifactLinks: links.length,
+                    labels: links.map((link) => link.textContent.replace(/\\s+/g, ' ').trim())
+                };
+            })()`);
+        } finally {
+            await client.send('Page.removeScriptToEvaluateOnNewDocument', {identifier: injection.identifier});
+        }
+    }
+
+    const one = await inspectInjectedArtifacts(1);
+    check(
+        one.hidden && one.centred && one.tabs === 0 && one.artifactLinks === 0,
+        'one artifact does not create a redundant navigation rail',
+        JSON.stringify(one)
+    );
+
+    const two = await inspectInjectedArtifacts(2);
+    check(
+        !two.hidden
+            && !two.centred
+            && two.tabs === 0
+            && two.outlineLinks === 0
+            && two.artifactLinks === 2
+            && two.labels.every((label) => /Table \d+.*Probe matrix/.test(label)),
+        'two artifacts create a focused artifact-only navigator without empty outline chrome',
+        JSON.stringify(two)
+    );
 }
 
 async function inspectListingImagePriority() {
@@ -813,9 +881,11 @@ async function inspectNoScriptFallback() {
         const menu = document.querySelector('[data-menu]');
         const toggle = document.querySelector('[data-menu-toggle]');
         const code = document.querySelector('[data-post-content] pre code');
+        const readerSettings = document.querySelector('[data-reader-settings]');
         return {
             menuDisplay: menu ? getComputedStyle(menu).display : 'none',
             toggleDisplay: toggle ? getComputedStyle(toggle).display : 'none',
+            readerSettingsHidden: readerSettings?.hidden || false,
             articleReadable: Boolean(document.querySelector('[data-post-content]')?.textContent.trim()),
             codeReadable: Boolean(code?.textContent.trim())
         };
@@ -823,6 +893,7 @@ async function inspectNoScriptFallback() {
     check(
         state.menuDisplay !== 'none'
             && state.toggleDisplay === 'none'
+            && state.readerSettingsHidden
             && state.articleReadable
             && state.codeReadable,
         'mobile navigation and technical content remain available without JavaScript',
@@ -1007,6 +1078,210 @@ async function inspectTechnicalContentStress() {
     await navigate('/');
 }
 
+async function inspectPremiumReadingTools() {
+    const injection = await client.send('Page.addScriptToEvaluateOnNewDocument', {
+        source: `
+            document.addEventListener('DOMContentLoaded', () => {
+                const content = document.querySelector('[data-post-content]');
+                if (!content) return;
+                const pre = document.createElement('pre');
+                const code = document.createElement('code');
+                code.className = 'language-shell';
+                code.textContent = '# file: diagnostics/long-running-probe.sh\\n'
+                    + Array.from({length: 36}, (_, index) =>
+                        'printf "probe-%02d\\\\n" ' + String(index + 1)
+                    ).join('\\n');
+                pre.dataset.qualitySweep = 'premium-code-tools';
+                pre.appendChild(code);
+                content.prepend(pre);
+            }, {once: true});
+        `
+    });
+    try {
+        await navigate('/tracing-the-edge-200ms-feedback-loop/');
+        const codeTools = await evaluate(`(() => {
+            const block = document.querySelector('[data-quality-sweep="premium-code-tools"]')
+                ?.closest('.shell-code-block');
+            const wrap = block?.querySelector('[data-code-wrap]');
+            const expand = block?.querySelector('[data-code-expand]');
+            const download = block?.querySelector('[data-code-download]');
+            const numbers = block?.querySelector('.code-line-numbers');
+            const before = {
+                collapsed: block?.classList.contains('shell-code-block--collapsed') || false,
+                expandLabel: expand?.textContent.replace(/\\s+/g, ' ').trim() || '',
+                expandTarget: expand?.getAttribute('aria-controls') || '',
+                targetExists: Boolean(document.getElementById(expand?.getAttribute('aria-controls') || '')),
+                downloadName: download?.getAttribute('aria-label') || '',
+                wrapPressed: wrap?.getAttribute('aria-pressed') || '',
+                toolbarControls: block?.querySelectorAll('.shell-code-toolbar__actions button').length || 0,
+                controls: block?.querySelectorAll('button').length || 0
+            };
+            expand?.click();
+            wrap?.click();
+            return {
+                before,
+                expanded: expand?.getAttribute('aria-expanded') === 'true'
+                    && !block?.classList.contains('shell-code-block--collapsed'),
+                wrapped: block?.classList.contains('shell-code-block--wrapped') || false,
+                wrapPressed: wrap?.getAttribute('aria-pressed') || '',
+                lineNumbersHidden: numbers ? getComputedStyle(numbers).display === 'none' : false,
+                storedWrap: localStorage.getItem('the-shell-pro:code-wrap') || ''
+            };
+        })()`);
+        check(
+            codeTools.before.collapsed
+                && /Show all 36 lines/.test(codeTools.before.expandLabel)
+                && Boolean(codeTools.before.expandTarget)
+                && codeTools.before.targetExists
+                && codeTools.before.downloadName.includes('long-running-probe.sh')
+                && codeTools.before.toolbarControls === 3
+                && codeTools.before.controls === 4
+                && codeTools.before.wrapPressed === 'false'
+                && codeTools.expanded
+                && codeTools.wrapped
+                && codeTools.wrapPressed === 'true'
+                && codeTools.lineNumbersHidden
+                && codeTools.storedWrap === 'wrap',
+            'long code blocks gain persistent wrapping, download, copy, and honest expand controls',
+            JSON.stringify(codeTools)
+        );
+
+        const readerTools = await evaluate(`(async () => {
+            const article = document.querySelector('.article');
+            const content = document.querySelector('.article-content');
+            const trigger = document.querySelector('[data-reader-settings]');
+            const dialog = document.querySelector('[data-reader-dialog]');
+            const footer = document.querySelector('.article-footer');
+            const initialFontSize = Number.parseFloat(getComputedStyle(content).fontSize);
+            trigger?.click();
+            const touchTargets = Array.from(dialog?.querySelectorAll('button') || [])
+                .map((button) => button.getBoundingClientRect())
+                .filter((box) => box.width > 0 && box.height > 0);
+            dialog?.querySelector('[data-reader-text="large"]')?.click();
+            dialog?.querySelector('[data-reader-measure="wide"]')?.click();
+            dialog?.querySelector('[data-reader-contrast="high"]')?.click();
+            dialog?.querySelector('[data-reader-focus]')?.click();
+            await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+            const applied = {
+                text: article?.dataset.readerText || '',
+                measure: article?.dataset.readerMeasure || '',
+                contrast: article?.dataset.readerContrast || '',
+                focus: document.body.classList.contains('reader-focus'),
+                fontSize: Number.parseFloat(getComputedStyle(content).fontSize),
+                endmatterHidden: footer ? getComputedStyle(footer).display === 'none' : false,
+                triggerFixed: trigger ? getComputedStyle(trigger).position === 'fixed' : false,
+                stored: localStorage.getItem('the-shell-pro:reader') || ''
+            };
+            dialog?.close();
+            return {
+                triggerVisible: Boolean(trigger && !trigger.hidden),
+                opened: dialog?.open || false,
+                minimumTarget: touchTargets.length
+                    ? Math.min(...touchTargets.map((box) => Math.min(box.width, box.height)))
+                    : 0,
+                initialFontSize,
+                applied
+            };
+        })()`);
+        check(
+            readerTools.triggerVisible
+                && readerTools.minimumTarget >= 32
+                && readerTools.applied.text === 'large'
+                && readerTools.applied.measure === 'wide'
+                && readerTools.applied.contrast === 'high'
+                && readerTools.applied.focus
+                && readerTools.applied.fontSize > readerTools.initialFontSize
+                && readerTools.applied.endmatterHidden
+                && readerTools.applied.triggerFixed
+                && /"text":"large"/.test(readerTools.applied.stored),
+            'reader controls apply useful preferences and provide a distraction-free focus mode',
+            JSON.stringify(readerTools)
+        );
+
+        await navigate('/tracing-the-edge-200ms-feedback-loop/');
+        const persistence = await evaluate(`(() => {
+            const article = document.querySelector('.article');
+            const trigger = document.querySelector('[data-reader-settings]');
+            const dialog = document.querySelector('[data-reader-dialog]');
+            const restored = {
+                text: article?.dataset.readerText || '',
+                measure: article?.dataset.readerMeasure || '',
+                contrast: article?.dataset.readerContrast || '',
+                focus: document.body.classList.contains('reader-focus'),
+                codeWrapped: Array.from(document.querySelectorAll('.shell-code-block'))
+                    .every((block) => block.classList.contains('shell-code-block--wrapped'))
+            };
+            trigger?.click();
+            dialog?.querySelector('[data-reader-reset]')?.click();
+            dialog?.close();
+            return {
+                restored,
+                reset: {
+                    text: article?.dataset.readerText || '',
+                    measure: article?.dataset.readerMeasure || '',
+                    contrast: article?.dataset.readerContrast || '',
+                    focus: document.body.classList.contains('reader-focus'),
+                    stored: localStorage.getItem('the-shell-pro:reader')
+                }
+            };
+        })()`);
+        check(
+            persistence.restored.text === 'large'
+                && persistence.restored.measure === 'wide'
+                && persistence.restored.contrast === 'high'
+                && persistence.restored.focus
+                && persistence.restored.codeWrapped
+                && persistence.reset.text === 'default'
+                && persistence.reset.measure === 'standard'
+                && persistence.reset.contrast === 'normal'
+                && !persistence.reset.focus
+                && persistence.reset.stored === null,
+            'reader and code preferences survive navigation and reset cleanly',
+            JSON.stringify(persistence)
+        );
+
+        await navigate('/tracing-the-edge-200ms-feedback-loop/', 390, 844);
+        const mobileReader = await evaluate(`(() => {
+            const trigger = document.querySelector('[data-reader-settings]');
+            const dialog = document.querySelector('[data-reader-dialog]');
+            trigger?.click();
+            const box = dialog?.getBoundingClientRect();
+            const controls = Array.from(dialog?.querySelectorAll('button') || [])
+                .map((button) => button.getBoundingClientRect())
+                .filter((control) => control.width > 0 && control.height > 0);
+            const state = {
+                open: dialog?.open || false,
+                inViewport: Boolean(box
+                    && box.top >= -1
+                    && box.left >= -1
+                    && box.right <= window.innerWidth + 1
+                    && box.bottom <= window.innerHeight + 1),
+                minimumTarget: controls.length
+                    ? Math.min(...controls.map((control) => Math.min(control.width, control.height)))
+                    : 0,
+                overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth
+            };
+            dialog?.close();
+            return state;
+        })()`);
+        check(
+            mobileReader.open
+                && mobileReader.inViewport
+                && mobileReader.minimumTarget >= 32
+                && mobileReader.overflow === 0,
+            'reading controls remain touch-sized and contained on mobile',
+            JSON.stringify(mobileReader)
+        );
+        await evaluate(`(() => {
+            localStorage.removeItem('the-shell-pro:code-wrap');
+            localStorage.removeItem('the-shell-pro:reader');
+        })()`);
+    } finally {
+        await client.send('Page.removeScriptToEvaluateOnNewDocument', {identifier: injection.identifier});
+    }
+    await navigate('/');
+}
+
 async function inspectErrorPage() {
     await navigate('/definitely-not-a-preview-route/');
     const state = await evaluate(`(() => ({
@@ -1038,6 +1313,24 @@ async function inspectLongArticle() {
             tocLinks.find((link) => link.hash === '#required-identity-fields'),
             tocLinks.find((link) => link.hash === '#cardinality-guardrail')
         ];
+        const outlineTab = document.querySelector('[data-toc-view="outline"]');
+        const artifactTab = document.querySelector('[data-toc-view="artifacts"]');
+        artifactTab?.click();
+        const artifactLinks = Array.from(document.querySelectorAll('.toc__artifact-list a'));
+        const artifactPanel = document.querySelector('[data-toc-panel="artifacts"]');
+        const artifactState = {
+            tabs: document.querySelectorAll('.toc__tab').length,
+            selected: artifactTab?.getAttribute('aria-selected') || '',
+            visible: Boolean(artifactPanel && !artifactPanel.hidden),
+            links: artifactLinks.length,
+            uniqueTargets: new Set(artifactLinks.map((link) => link.hash)).size,
+            typedLabels: artifactLinks.filter((link) =>
+                /^(?:Code|Figure|Table|File|Evidence) \\d+/i.test(
+                    link.textContent.replace(/\\s+/g, ' ').trim()
+                )
+            ).length
+        };
+        outlineTab?.click();
         const parentHeading = (link) =>
             link?.closest('li')?.parentElement?.closest('li')?.querySelector(':scope > a')?.hash || '';
         return {
@@ -1045,6 +1338,7 @@ async function inspectLongArticle() {
             tocLinks: tocLinks.length,
             deepHeadingsPresent: deepHeadingLinks.every(Boolean),
             deepHeadingParents: deepHeadingLinks.map(parentHeading),
+            artifactState,
             nasmFilename: nasmBlock?.querySelector('.shell-code-toolbar__file')?.textContent.trim() || '',
             nasmSource: nasmCode?.textContent || '',
             highlightedBlocks: document.querySelectorAll('[data-post-content] code[data-highlighted]').length,
@@ -1072,6 +1366,16 @@ async function inspectLongArticle() {
             && state.deepHeadingParents[1] === '#required-identity-fields',
         'long-article TOC includes and nests H4/H5 waypoints',
         JSON.stringify(state)
+    );
+    check(
+        state.artifactState.tabs === 2
+            && state.artifactState.selected === 'true'
+            && state.artifactState.visible
+            && state.artifactState.links >= 8
+            && state.artifactState.uniqueTargets === state.artifactState.links
+            && state.artifactState.typedLabels === state.artifactState.links,
+        'artifact-heavy articles gain a typed, uniquely linked companion to the outline',
+        JSON.stringify(state.artifactState)
     );
     check(
         state.nasmFilename === 'probes/remaining_budget.asm'
@@ -1161,6 +1465,30 @@ async function inspectLongArticle() {
             && directHashState.active === '#cardinality-guardrail',
         'direct deep links settle below the sticky header with the matching waypoint active',
         JSON.stringify(directHashState)
+    );
+
+    await navigate('/');
+    await navigate('/tracing-the-edge-200ms-feedback-loop/#code-1');
+    const artifactHashState = await evaluate(`(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 900));
+        const target = document.querySelector('#code-1');
+        const artifactTab = document.querySelector('[data-toc-view="artifacts"]');
+        const active = document.querySelector('.toc__artifact-list a[aria-current="location"]');
+        return {
+            targetTop: target?.getBoundingClientRect().top ?? -1,
+            tabSelected: artifactTab?.getAttribute('aria-selected') || '',
+            active: active?.getAttribute('href') || '',
+            scrollY: window.scrollY,
+            documentHeight: document.documentElement.scrollHeight
+        };
+    })()`);
+    check(
+        artifactHashState.targetTop >= 78
+            && artifactHashState.targetTop <= 110
+            && artifactHashState.tabSelected === 'true'
+            && artifactHashState.active === '#code-1',
+        'direct artifact links open the artifact map and settle on the indexed target',
+        JSON.stringify(artifactHashState)
     );
 
     await navigate('/tracing-the-edge-200ms-feedback-loop/');
@@ -1312,6 +1640,7 @@ async function main() {
     await inspectMobileHome();
     await inspectCollapsedNavigation();
     await inspectShortArticle();
+    await inspectAdaptiveArticleNavigation();
     await inspectListingImagePriority();
     await inspectPublicationEmbed();
     await inspectUnknownCodeFallback();
@@ -1324,6 +1653,7 @@ async function main() {
     await inspectNoScriptFallback();
     await inspectMobileInteractionStress();
     await inspectTechnicalContentStress();
+    await inspectPremiumReadingTools();
     await inspectErrorPage();
     await inspectLongArticle();
     await inspectFooter();

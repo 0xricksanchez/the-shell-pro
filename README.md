@@ -6,7 +6,8 @@ A Ghost in the Shell-inspired theme for long-form technical writing on **Ghost 6
 
 ## Features
 
-- **Reading tools** — scroll-aware nested table of contents (sticky sidebar on desktop, touch-sized waypoint control on mobile), reading-progress meter, numbered figure artifacts with keyboard-accessible zoom and an *Open original* link, code blocks with syntax highlighting, line numbers, filenames, and copy buttons. Highlight.js (pinned 11.11.1) loads only on pages that contain code.
+- **Reading tools** — adaptive research map (nested outline plus an artifact index only when useful), reading-progress meter, persistent text/measure/contrast controls, distraction-free focus mode, and numbered figures with keyboard-accessible zoom.
+- **Code workbench** — syntax highlighting, line numbers, filenames, copy and download controls, persistent wrap/scroll preference, and compact previews for long listings. Highlight.js (pinned 11.11.1) loads only on pages that contain code; every local control and readable source remains available if the CDN does not.
 - **Research workflow** — semantic post-type badges, color-coded research blocks, first-class evidence panels, copy-link/copy-citation controls, server-rendered series boxes, and a homepage lab index generated from your public tags.
 - **First-class footer** — terminal colophon (`$` prompt, live *last transmission* linking the latest post, PGP fingerprint), an admin-driven navigate column, and a social icon rail with inline [Simple Icons](https://simpleicons.org/) brand marks carrying `rel="me"` (free Mastodon verification).
 - **SEO** — Ghost keeps ownership of canonicals, Open Graph, and JSON-LD via `{{ghost_head}}`; the theme adds visible BreadcrumbList microdata, crawlable series/pagination links, `max-image-preview:large`, and responsive WebP hero images with LCP priority.
@@ -45,7 +46,9 @@ Re-check custom setting values after uploading a theme version that changes the 
 | Internal tag `#series: Name` | Renders an ordered series box on every post sharing it |
 | Internal tag `#updated` | Shows the updated date (Ghost mutates `updated_at` on trivial edits, so it is opt-in) |
 | `H2`–`H5` section headings (`H1` remains the post/page title) | Populate the sticky, level-preserving table of contents |
-| First code-block line `// file: path.ext`, `# file: path.ext`, or `; file: path.ext` | Shows the filename in the code toolbar |
+| Two or more code blocks, figures, tables, file cards, or evidence panels | Add an Artifacts view beside the outline; zero or one artifact leaves the ordinary TOC unchanged |
+| First code-block line `// file: path.ext`, `# file: path.ext`, or `; file: path.ext` | Shows the filename and enables a source download in the code toolbar |
+| Code block longer than 24 source lines | Starts as a compact preview with an explicit expand control |
 | Blockquote starting `> **Method:** …` | Research block; recognised labels include Environment, Hypothesis, Method, Finding, Limitation, Safety, Reproduction |
 | `## Evidence & references` heading (or Sources / Further reading) | Groups that section into an evidence panel |
 | Ghost pages with slug `topics` / `archives` | Auto-select the tag-directory and archive templates (archive lists the latest 100 — use `routes.yaml` collections beyond that) |

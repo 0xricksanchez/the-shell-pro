@@ -1,0 +1,56 @@
+<div class="reader-tools">
+    <button
+        class="reader-tools__trigger"
+        type="button"
+        data-reader-settings
+        aria-haspopup="dialog"
+        aria-controls="reader-tools-dialog"
+        aria-expanded="false"
+        aria-label="Reading preferences"
+        hidden>
+        <span aria-hidden="true">Aa</span>
+    </button>
+
+    <dialog class="reader-dialog" id="reader-tools-dialog" data-reader-dialog aria-labelledby="reader-tools-title">
+        <form class="reader-dialog__panel" method="dialog">
+            <header class="reader-dialog__header">
+                <div>
+                    <p class="eyebrow">// reader profile</p>
+                    <h2 id="reader-tools-title">Reading controls</h2>
+                </div>
+                <button class="reader-dialog__close" type="submit" value="close" aria-label="Close reading controls">Close</button>
+            </header>
+
+            <div class="reader-setting">
+                <p id="reader-text-label">Text size</p>
+                <div class="reader-setting__options" role="group" aria-labelledby="reader-text-label">
+                    <button type="button" data-reader-text="compact" aria-pressed="false">Small</button>
+                    <button type="button" data-reader-text="default" aria-pressed="true">Default</button>
+                    <button type="button" data-reader-text="large" aria-pressed="false">Large</button>
+                </div>
+            </div>
+
+            <div class="reader-setting">
+                <p id="reader-measure-label">Reading width</p>
+                <div class="reader-setting__options" role="group" aria-labelledby="reader-measure-label">
+                    <button type="button" data-reader-measure="focused" aria-pressed="false">Focused</button>
+                    <button type="button" data-reader-measure="standard" aria-pressed="true">Standard</button>
+                    <button type="button" data-reader-measure="wide" aria-pressed="false">Wide</button>
+                </div>
+            </div>
+
+            <div class="reader-setting">
+                <p id="reader-contrast-label">Contrast</p>
+                <div class="reader-setting__options" role="group" aria-labelledby="reader-contrast-label">
+                    <button type="button" data-reader-contrast="normal" aria-pressed="true">Normal</button>
+                    <button type="button" data-reader-contrast="high" aria-pressed="false">High</button>
+                </div>
+            </div>
+
+            <div class="reader-dialog__footer">
+                <button class="reader-focus-toggle" type="button" data-reader-focus aria-pressed="false">Focus mode</button>
+                <button class="reader-reset" type="button" data-reader-reset>Reset</button>
+            </div>
+        </form>
+    </dialog>
+</div>

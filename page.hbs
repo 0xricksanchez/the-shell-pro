@@ -7,6 +7,7 @@
             <header class="article-header">
                 <div class="article-header__content">
                     {{> "breadcrumbs" current=title}}
+                    {{> "reader-tools"}}
                     <p class="eyebrow">// reference</p>
                     <h1>{{title}}</h1>
                     {{#if custom_excerpt}}<p class="article-header__excerpt">{{custom_excerpt}}</p>{{/if}}
@@ -39,7 +40,7 @@
         {{/unless}}
         <div class="article-layout">
             <aside class="article-toc" data-toc-container>
-                <nav class="toc" data-toc aria-label="Table of contents">
+                <nav class="toc" data-toc aria-label="Article navigation">
                     <p class="toc__title">On this page</p>
                 </nav>
             </aside>

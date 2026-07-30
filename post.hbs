@@ -6,6 +6,7 @@
         <header class="article-header">
             <div class="article-header__content">
                 {{> "breadcrumbs" current=title}}
+                {{> "reader-tools"}}
                 {{> "post-type"}}
                 <p class="eyebrow">{{#primary_tag}}<a href="{{url}}">// {{name}}</a>{{else}}// field note{{/primary_tag}}</p>
                 <h1>{{title}}</h1>
@@ -50,7 +51,7 @@
 
         <div class="article-layout">
             <aside class="article-toc" data-toc-container>
-                <nav class="toc" data-toc aria-label="Table of contents">
+                <nav class="toc" data-toc aria-label="Article navigation">
                     <p class="toc__title">On this page</p>
                 </nav>
             </aside>
