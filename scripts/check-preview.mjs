@@ -689,20 +689,30 @@ async function inspectUntypedCodeLabel() {
             const wrapper = injected?.closest('.shell-code-block');
             return {
                 wrapped: Boolean(wrapper),
-                highlighted: code?.classList.contains('hljs') || false,
+                tokenSpans: code?.querySelectorAll('[class*="hljs-"]').length ?? -1,
                 inferredLanguage: Array.from(code?.classList || [])
                     .find((name) => name.startsWith('language-')) || '',
                 anonymous: wrapper?.classList.contains('shell-code-block--anonymous') || false,
-                identityPresent: Boolean(wrapper?.querySelector('.shell-code-toolbar__identity'))
+                identityPresent: Boolean(wrapper?.querySelector('.shell-code-toolbar__identity')),
+                label: wrapper?.querySelector('.shell-code-toolbar__language')?.textContent.trim() || '',
+                readable: code?.textContent.includes('.audit { color: red; }') || false
             };
         })()`);
+        /*
+         * This snippet reads as CSS to a detector, but the author never said so.
+         * Guessing is what produced C++ diagrams and CSS-coloured key/value
+         * listings in the wild, so an undeclared block stays untokenised and is
+         * labelled honestly instead.
+         */
         check(
             state.wrapped
-                && state.highlighted
-                && Boolean(state.inferredLanguage)
+                && state.tokenSpans === 0
+                && state.inferredLanguage === ''
                 && state.anonymous
-                && !state.identityPresent,
-            'untyped code stays syntax-aware without rendering a placeholder header',
+                && state.identityPresent
+                && state.label === 'Plain text'
+                && state.readable,
+            'untyped code is labelled plainly and never guessed at by the highlighter',
             JSON.stringify(state)
         );
     } finally {
@@ -1104,7 +1114,40 @@ async function inspectPremiumReadingTools() {
                 ).join('\\n');
                 anonymousPre.dataset.qualitySweep = 'anonymous-code-tools';
                 anonymousPre.appendChild(anonymousCode);
-                content.prepend(anonymousPre, pre);
+
+                // A collapsed listing whose lines are far wider than the column,
+                // so the <pre> carries a horizontal scrollbar. The scrollbar used
+                // to sit on top of the last previewed line.
+                const widePre = document.createElement('pre');
+                const wideCode = document.createElement('code');
+                wideCode.className = 'language-shell';
+                wideCode.textContent = Array.from(
+                    {length: 40},
+                    (_, index) => 'run --stage ' + (index + 1) + ' ' + '--flag=value'.repeat(24)
+                ).join('\\n');
+                widePre.dataset.qualitySweep = 'wide-code-tools';
+                widePre.appendChild(wideCode);
+
+                // One line, no language: the toolbar must not land on the code.
+                const singlePre = document.createElement('pre');
+                const singleCode = document.createElement('code');
+                singleCode.textContent = 'binwalk -Me --dd=".*" firmware.img --directory=/tmp/out';
+                singlePre.dataset.qualitySweep = 'single-line-code-tools';
+                singlePre.appendChild(singleCode);
+
+                // Box-drawing art with no language must never be auto-detected.
+                const diagramPre = document.createElement('pre');
+                const diagramCode = document.createElement('code');
+                diagramCode.textContent = [
+                    '    NO KPTI              KPTI ENABLED',
+                    '┌───────────────┐      ┌──────────────┐',
+                    '│  Kernel land  │ ───► │  User land   │',
+                    '└───────────────┘      └──────────────┘'
+                ].join('\\n');
+                diagramPre.dataset.qualitySweep = 'diagram-code-tools';
+                diagramPre.appendChild(diagramCode);
+
+                content.prepend(diagramPre, singlePre, widePre, anonymousPre, pre);
             }, {once: true});
         `
     });
@@ -1138,24 +1181,35 @@ async function inspectPremiumReadingTools() {
                 toolbarControls: block?.querySelectorAll('.shell-code-toolbar__actions button').length || 0,
                 controls: block?.querySelectorAll('button').length || 0
             };
+            const previewLines = Number.parseInt(
+                getComputedStyle(document.documentElement).getPropertyValue('--code-preview-lines'),
+                10
+            );
             const anonymous = {
                 marked: anonymousBlock?.classList.contains('shell-code-block--anonymous') || false,
                 collapsed: anonymousBlock?.classList.contains('shell-code-block--collapsed') || false,
                 filename: anonymousBlock?.dataset.filename || '',
+                // Without a filename the language label is the block's identity,
+                // so the header is present and names the listing.
                 identityPresent: Boolean(anonymousBlock?.querySelector('.shell-code-toolbar__identity')),
+                languageLabel: anonymousBlock
+                    ?.querySelector('.shell-code-toolbar__language')?.textContent.trim() || '',
                 toolbarLabels: Array.from(anonymousToolbar?.querySelectorAll('button') || [])
                     .map((button) => button.textContent.trim()),
                 toolbarControls: anonymousBlock
                     ?.querySelectorAll('.shell-code-toolbar__actions button').length || 0,
+                // The header sits in flow above the code. It is never absolutely
+                // positioned, which is what used to let it overlap the source.
                 toolbarPosition: anonymousToolbar ? getComputedStyle(anonymousToolbar).position : '',
-                toolbarSharesCodeSurface: Boolean(anonymousToolbarBox && anonymousPreBox
-                    && anonymousToolbarBox.top >= anonymousPreBox.top
-                    && anonymousToolbarBox.bottom <= anonymousPreBox.bottom),
-                firstLineClearsToolbar: Boolean(anonymousToolbarBox && anonymousCodeBox
-                    && anonymousCodeBox.top >= anonymousToolbarBox.bottom + 4),
-                lineNumbersAligned: Boolean(anonymousPreBox && anonymousNumbersBox
-                    && Math.abs(anonymousPreBox.top - anonymousNumbersBox.top) <= 1
-                    && Math.abs(anonymousPreBox.height - anonymousNumbersBox.height) <= 1),
+                toolbarClearsCode: Boolean(anonymousToolbarBox && anonymousCodeBox
+                    && anonymousToolbarBox.bottom <= anonymousCodeBox.top),
+                // No reserved-but-empty band: the gap between the header and the
+                // first line is just the <pre> padding.
+                deadBandAboveCode: anonymousToolbarBox && anonymousCodeBox
+                    ? Math.round(anonymousCodeBox.top - anonymousToolbarBox.bottom)
+                    : -1,
+                lineNumbersAlignToCode: Boolean(anonymousNumbersBox && anonymousPreBox
+                    && Math.abs(anonymousPreBox.top - anonymousNumbersBox.top) <= 1),
                 visibleLineNumbers: anonymousNumbersBox
                     ? Array.from(anonymousNumbers.children).filter((line) => {
                         const box = line.getBoundingClientRect();
@@ -1169,6 +1223,59 @@ async function inspectPremiumReadingTools() {
                     ).length
                     : 0
             };
+
+            /*
+             * A collapsed listing that scrolls horizontally: every line the
+             * gutter counts has to be readable. Clamping the scrolling <pre>
+             * put its scrollbar over the last line, so the gutter promised
+             * sixteen lines while only fifteen could be read.
+             */
+            const wideBlock = document.querySelector('[data-quality-sweep="wide-code-tools"]')
+                ?.closest('.shell-code-block');
+            const widePre = wideBlock?.querySelector('pre');
+            const wideCode = wideBlock?.querySelector('code');
+            const wideNumbers = wideBlock?.querySelector('.code-line-numbers');
+            const widePreBox = widePre?.getBoundingClientRect();
+            const wideCodeBox = wideCode?.getBoundingClientRect();
+            const wideLineHeight = wideNumbers?.firstElementChild?.getBoundingClientRect().height || 0;
+            const wide = {
+                collapsed: wideBlock?.classList.contains('shell-code-block--collapsed') || false,
+                scrolls: Boolean(widePre && widePre.scrollWidth > widePre.clientWidth + 1),
+                // The clipped code ends above the scrollbar, not behind it.
+                lastLineClearsScrollbar: Boolean(widePreBox && wideCodeBox && widePre
+                    && wideCodeBox.bottom <= widePreBox.top + widePre.clientHeight + 1),
+                previewedRows: wideLineHeight
+                    ? Math.round((wideCodeBox?.height || 0) / wideLineHeight)
+                    : 0,
+                // A scrolling region has to be reachable from the keyboard.
+                keyboardReachable: widePre?.getAttribute('tabindex') === '0'
+                    && Boolean(widePre?.getAttribute('aria-label'))
+            };
+
+            // One line and no language: the actions must not sit on the code.
+            const singleBlock = document.querySelector('[data-quality-sweep="single-line-code-tools"]')
+                ?.closest('.shell-code-block');
+            const singleToolbarBox = singleBlock
+                ?.querySelector('.shell-code-toolbar')?.getBoundingClientRect();
+            const singleCodeBox = singleBlock?.querySelector('code')?.getBoundingClientRect();
+            const single = {
+                enhanced: Boolean(singleBlock),
+                label: singleBlock?.querySelector('.shell-code-toolbar__language')?.textContent.trim() || '',
+                actionsClearCode: Boolean(singleToolbarBox && singleCodeBox
+                    && singleToolbarBox.bottom <= singleCodeBox.top)
+            };
+
+            // Box-drawing art carries no language, so nothing may tokenise it.
+            const diagramBlock = document.querySelector('[data-quality-sweep="diagram-code-tools"]')
+                ?.closest('.shell-code-block');
+            const diagramCode = diagramBlock?.querySelector('code');
+            const diagram = {
+                enhanced: Boolean(diagramBlock),
+                language: diagramBlock?.dataset.language ?? 'missing',
+                label: diagramBlock?.querySelector('.shell-code-toolbar__language')?.textContent.trim() || '',
+                tokenSpans: diagramCode?.querySelectorAll('[class*="hljs-"]').length ?? -1,
+                autoDetectedClass: /language-/.test(diagramCode?.className || '')
+            };
             const disclosure = {
                 height: expandBox?.height || 0,
                 sharesCodeSurface: Boolean(expand
@@ -1180,11 +1287,18 @@ async function inspectPremiumReadingTools() {
             return {
                 before,
                 anonymous,
+                wide,
+                single,
+                diagram,
                 disclosure,
+                previewLines,
                 expanded: expand?.getAttribute('aria-expanded') === 'true'
                     && !block?.classList.contains('shell-code-block--collapsed'),
+                collapseLabel: expand?.textContent.replace(/\\s+/g, ' ').trim() || '',
                 wrapped: block?.classList.contains('shell-code-block--wrapped') || false,
                 wrapPressed: wrap?.getAttribute('aria-pressed') || '',
+                // The label is fixed; aria-pressed alone carries the state.
+                wrapLabel: wrap?.textContent.trim() || '',
                 lineNumbersHidden: numbers ? getComputedStyle(numbers).display === 'none' : false,
                 storedWrap: localStorage.getItem('the-shell-pro:code-wrap') || ''
             };
@@ -1201,25 +1315,121 @@ async function inspectPremiumReadingTools() {
                 && codeTools.anonymous.marked
                 && codeTools.anonymous.collapsed
                 && codeTools.anonymous.filename === ''
-                && !codeTools.anonymous.identityPresent
+                && codeTools.anonymous.identityPresent
+                && codeTools.anonymous.languageLabel === 'Plain text'
                 && codeTools.anonymous.toolbarLabels.join(',') === 'Wrap,Copy'
                 && codeTools.anonymous.toolbarControls === 2
-                && codeTools.anonymous.toolbarPosition === 'absolute'
-                && codeTools.anonymous.toolbarSharesCodeSurface
-                && codeTools.anonymous.firstLineClearsToolbar
-                && codeTools.anonymous.lineNumbersAligned
-                && codeTools.anonymous.visibleLineNumbers === 16
-                && codeTools.anonymous.paintedLineNumbers === 16
+                && codeTools.anonymous.toolbarPosition === 'static'
+                && codeTools.anonymous.toolbarClearsCode
+                && codeTools.anonymous.deadBandAboveCode >= 0
+                && codeTools.anonymous.deadBandAboveCode <= 24
+                && codeTools.anonymous.lineNumbersAlignToCode
+                && codeTools.anonymous.visibleLineNumbers === codeTools.previewLines
+                && codeTools.anonymous.paintedLineNumbers === codeTools.previewLines
                 && codeTools.disclosure.height <= 36
                 && codeTools.disclosure.sharesCodeSurface
                 && /[↓⇣]/.test(codeTools.disclosure.direction)
                 && codeTools.expanded
+                && codeTools.collapseLabel === 'Collapse to ' + codeTools.previewLines + '-line preview'
                 && codeTools.wrapped
                 && codeTools.wrapPressed === 'true'
+                && codeTools.wrapLabel === 'Wrap'
                 && codeTools.lineNumbersHidden
                 && codeTools.storedWrap === 'wrap',
-            'code tools stay compact without filenames and long listings use a clear disclosure',
+            'every code block is titled, the header stays clear of the source, and long listings disclose cleanly',
             JSON.stringify(codeTools)
+        );
+
+        check(
+            codeTools.wide.collapsed
+                && codeTools.wide.scrolls
+                && codeTools.wide.lastLineClearsScrollbar
+                && codeTools.wide.previewedRows === codeTools.previewLines
+                && codeTools.wide.keyboardReachable,
+            'a collapsed listing that scrolls shows every previewed line above the scrollbar',
+            JSON.stringify(codeTools.wide)
+        );
+
+        check(
+            codeTools.single.enhanced
+                && codeTools.single.label === 'Plain text'
+                && codeTools.single.actionsClearCode,
+            'a single-line listing keeps its controls clear of the code',
+            JSON.stringify(codeTools.single)
+        );
+
+        check(
+            codeTools.diagram.enhanced
+                && codeTools.diagram.language === ''
+                && codeTools.diagram.label === 'Plain text'
+                && codeTools.diagram.tokenSpans === 0
+                && !codeTools.diagram.autoDetectedClass,
+            'listings without a declared language are never auto-detected or tokenised',
+            JSON.stringify(codeTools.diagram)
+        );
+
+        /*
+         * Collapsing a long listing removes height above the button that was
+         * just pressed, so without a correction the reader is thrown down the
+         * article by the collapsed distance. The block has to stay on screen.
+         */
+        const collapseAnchoring = await evaluate(`(async () => {
+            const settle = () => new Promise((resolve) =>
+                requestAnimationFrame(() => requestAnimationFrame(resolve)));
+            const block = document.querySelector('[data-quality-sweep="anonymous-code-tools"]')
+                ?.closest('.shell-code-block');
+            const expand = block?.querySelector('[data-code-expand]');
+            const wrap = block?.querySelector('[data-code-wrap]');
+            if (!block || !expand) {
+                return {ran: false};
+            }
+            // Measure with wrapping off, then hand the page back in the state it
+            // arrived in so the persistence check that follows still sees it.
+            const wrapWasOn = wrap?.getAttribute('aria-pressed') === 'true';
+            if (wrapWasOn) {
+                wrap.click();
+                await settle();
+            }
+
+            expand.click();
+            await settle();
+            const expandedHeight = Math.round(block.getBoundingClientRect().height);
+
+            // Put the collapse control where a reader would have scrolled to it.
+            expand.scrollIntoView({block: 'center', behavior: 'instant'});
+            await settle();
+            const buttonBefore = Math.round(expand.getBoundingClientRect().top);
+
+            expand.click();
+            await settle();
+            const box = block.getBoundingClientRect();
+            if (wrapWasOn) {
+                wrap.click();
+                await settle();
+            }
+            return {
+                ran: true,
+                wrapRestored: (wrap?.getAttribute('aria-pressed') === 'true') === wrapWasOn,
+                expandedHeight,
+                collapsedHeight: Math.round(box.height),
+                collapsed: block.classList.contains('shell-code-block--collapsed'),
+                buttonBefore,
+                blockTop: Math.round(box.top),
+                blockBottom: Math.round(box.bottom),
+                viewport: Math.round(window.innerHeight),
+                blockOnScreen: box.bottom > 0 && box.top < window.innerHeight,
+                blockFullyVisible: box.top >= 0 && box.bottom <= window.innerHeight
+            };
+        })()`);
+        check(
+            collapseAnchoring.ran
+                && collapseAnchoring.wrapRestored
+                && collapseAnchoring.collapsed
+                && collapseAnchoring.collapsedHeight < collapseAnchoring.expandedHeight
+                && collapseAnchoring.blockOnScreen
+                && collapseAnchoring.blockFullyVisible,
+            'collapsing a long listing keeps the reader on the block instead of jumping down the article',
+            JSON.stringify(collapseAnchoring)
         );
 
         const readerTools = await evaluate(`(async () => {

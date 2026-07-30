@@ -34,13 +34,21 @@
     }
 
     function loadSyntaxHighlighting() {
-        if (!doc.querySelector('[data-post-content] pre > code') || window.hljs) {
+        if (!doc.querySelector('[data-post-content] pre')) {
             return Promise.resolve();
         }
-        return loadScript(highlightBase + 'highlight.min.js')
-            .then(function () {
-                return loadScript(highlightBase + 'languages/x86asm.min.js');
-            });
+        var core = window.hljs
+            ? Promise.resolve()
+            : loadScript(highlightBase + 'highlight.min.js');
+        return core.then(function () {
+            // x86asm backs the nasm/asm aliases. Load it even when hljs was
+            // already on the page (injected by a card or another script);
+            // otherwise assembly listings silently lose highlighting.
+            if (!window.hljs || window.hljs.getLanguage('x86asm')) {
+                return undefined;
+            }
+            return loadScript(highlightBase + 'languages/x86asm.min.js');
+        });
     }
 
     function registerTechnicalAliases() {
@@ -58,6 +66,7 @@
         }
 
         return new Promise(function (resolve, reject) {
+            var previousFocus = doc.activeElement;
             var textarea = doc.createElement('textarea');
             textarea.value = text;
             textarea.setAttribute('readonly', '');
@@ -72,18 +81,50 @@
                 resolve();
             } catch (error) {
                 reject(error);
+            } finally {
+                textarea.remove();
+                // Selecting the scratch textarea moved focus off the button the
+                // reader pressed; put it back so the keyboard path is unbroken.
+                if (previousFocus && typeof previousFocus.focus === 'function') {
+                    previousFocus.focus();
+                }
             }
-            textarea.remove();
         });
     }
 
+    var languageLabels = {
+        asm: 'Assembly', bash: 'Bash', c: 'C', cmake: 'CMake', console: 'Console',
+        cpp: 'C++', cs: 'C#', csharp: 'C#', css: 'CSS', diff: 'Diff',
+        dockerfile: 'Dockerfile', go: 'Go', golang: 'Go', haskell: 'Haskell',
+        html: 'HTML', ini: 'INI', java: 'Java', javascript: 'JavaScript',
+        js: 'JavaScript', json: 'JSON', kotlin: 'Kotlin', lua: 'Lua',
+        make: 'Makefile', makefile: 'Makefile', markdown: 'Markdown', md: 'Markdown',
+        nasm: 'NASM', objectivec: 'Objective-C', patch: 'Diff', perl: 'Perl',
+        php: 'PHP', powershell: 'PowerShell', ps1: 'PowerShell', py: 'Python',
+        python: 'Python', rb: 'Ruby', ruby: 'Ruby', rs: 'Rust', rust: 'Rust',
+        scala: 'Scala', sh: 'Shell', shell: 'Shell', sql: 'SQL', swift: 'Swift',
+        toml: 'TOML', ts: 'TypeScript', typescript: 'TypeScript', xml: 'XML',
+        x86asm: 'x86 assembly', yaml: 'YAML', yml: 'YAML', zsh: 'Zsh'
+    };
+
     function languageIdentifier(code) {
-        var match = code.className.match(/(?:language-|lang-)([a-z0-9+_-]+)/i);
-        return match ? match[1] : '';
+        // Anchored at a class boundary so names such as "erlang-example" cannot
+        // masquerade as a language, and read from the <pre> too because some
+        // editors put the hint on the wrapper rather than the <code>.
+        var pre = code.parentElement;
+        var source = code.className + ' ' + (pre ? pre.className : '');
+        var match = source.match(/(?:^|\s)(?:language|lang)-([a-z0-9+#_-]+)/i);
+        return match ? match[1].toLowerCase() : '';
     }
 
     function languageName(identifier) {
-        return identifier ? identifier.replace(/[-_]/g, ' ') : 'code';
+        if (!identifier) {
+            return 'Plain text';
+        }
+        if (Object.prototype.hasOwnProperty.call(languageLabels, identifier)) {
+            return languageLabels[identifier];
+        }
+        return identifier.replace(/[-_]/g, ' ');
     }
 
     function readStorage(key) {
@@ -107,16 +148,46 @@
         }
     }
 
+    var liveRegion = null;
+    var announceTimer = 0;
+
+    /*
+     * Transient button feedback ("Copied", "Saved") is a visual-only signal, so
+     * every such message is mirrored here for assistive technology. The buttons
+     * keep a stable accessible name; status goes through this region instead.
+     */
+    function announce(message) {
+        if (!liveRegion) {
+            liveRegion = doc.createElement('p');
+            liveRegion.className = 'visually-hidden';
+            liveRegion.setAttribute('role', 'status');
+            liveRegion.setAttribute('aria-live', 'polite');
+            doc.body.appendChild(liveRegion);
+        }
+        // Clearing first makes a repeated identical message announce again.
+        liveRegion.textContent = '';
+        window.clearTimeout(announceTimer);
+        announceTimer = window.setTimeout(function () {
+            liveRegion.textContent = message;
+        }, 60);
+    }
+
     function filenameFor(pre, code) {
         return pre.dataset.filename || code.dataset.filename || '';
     }
 
     function filenameFromSource(code) {
-        var match = code.textContent.match(/^(?:\/\/|#|;)\s*file:\s*([^\n]+)\n/);
+        // Operate on the leading text node rather than code.textContent, which
+        // would flatten any markup the editor emitted inside the block.
+        var first = code.firstChild;
+        if (!first || first.nodeType !== 3) {
+            return '';
+        }
+        var match = first.nodeValue.match(/^(?:\/\/|#|;)[ \t]*file:[ \t]*([^\n]*)\n/);
         if (!match) {
             return '';
         }
-        code.textContent = code.textContent.slice(match[0].length);
+        first.nodeValue = first.nodeValue.slice(match[0].length);
         return match[1].trim();
     }
 
@@ -169,18 +240,103 @@
         return button;
     }
 
+    /*
+     * How many lines a collapsed block previews. The value lives in CSS as
+     * --code-preview-lines and is read back here so the button label and the
+     * clip height can never disagree.
+     */
+    function previewLineCount(element) {
+        // Resolved against the block itself so a scoped override of the token
+        // still produces a label that matches what the block actually shows.
+        var raw = window.getComputedStyle(element || doc.documentElement)
+            .getPropertyValue('--code-preview-lines');
+        var value = parseInt(raw, 10);
+        return value > 0 ? value : 16;
+    }
+
+    function stickyHeaderOffset() {
+        var header = doc.querySelector('.site-header');
+        return Math.round(header ? header.getBoundingClientRect().height : 0) + 16;
+    }
+
+    /*
+     * Brings a block's top edge back below the sticky header when it has been
+     * scrolled past. Instant rather than smooth: this is a correction that keeps
+     * the reader where they were, not a navigation they asked for.
+     */
+    function revealBlockTop(wrapper) {
+        var offset = stickyHeaderOffset();
+        var top = wrapper.getBoundingClientRect().top;
+        if (top < offset) {
+            window.scrollBy({top: top - offset, left: 0, behavior: 'instant'});
+        }
+    }
+
+    /*
+     * A horizontally scrolling region has to be reachable without a mouse
+     * (WCAG 2.1.1), but a permanent tab stop on every listing would clutter the
+     * tab order. The <pre> therefore becomes focusable only while it actually
+     * overflows.
+     */
+    function syncScrollableRegion(wrapper) {
+        var pre = wrapper.querySelector('pre');
+        if (!pre) {
+            return;
+        }
+        var scrolls = pre.scrollWidth > pre.clientWidth + 1;
+        wrapper.classList.toggle('shell-code-block--scrolls', scrolls);
+        if (scrolls) {
+            pre.setAttribute('tabindex', '0');
+            pre.setAttribute('role', 'region');
+            pre.setAttribute('aria-label', wrapper.dataset.regionLabel || 'Code listing');
+        } else {
+            pre.removeAttribute('tabindex');
+            pre.removeAttribute('role');
+            pre.removeAttribute('aria-label');
+        }
+    }
+
+    function syncAllScrollableRegions() {
+        doc.querySelectorAll('.shell-code-block').forEach(syncScrollableRegion);
+    }
+
+    /*
+     * Whether a listing overflows depends on the viewport and on the reader's
+     * width/text-size settings, so the focusable-region state is re-evaluated
+     * whenever the layout changes rather than only once at enhancement time.
+     */
+    function watchCodeBlockOverflow() {
+        var frame = 0;
+        var schedule = function () {
+            window.cancelAnimationFrame(frame);
+            frame = window.requestAnimationFrame(syncAllScrollableRegions);
+        };
+        window.addEventListener('resize', schedule, {passive: true});
+        if (typeof ResizeObserver === 'function') {
+            var content = doc.querySelector('[data-post-content]');
+            if (content) {
+                new ResizeObserver(schedule).observe(content);
+            }
+        }
+    }
+
     function setCodeWrapping(wrapped, persist) {
         doc.querySelectorAll('.shell-code-block').forEach(function (wrapper) {
             wrapper.classList.toggle('shell-code-block--wrapped', wrapped);
             var button = wrapper.querySelector('[data-code-wrap]');
             if (button) {
+                // The label stays put: aria-pressed carries the state. Renaming
+                // it to the opposite action made screen readers announce
+                // "Scroll, pressed", which says the opposite of what is true.
                 button.setAttribute('aria-pressed', String(wrapped));
-                button.textContent = wrapped ? 'Scroll' : 'Wrap';
-                button.setAttribute('aria-label', wrapped ? 'Use scrolling code lines' : 'Wrap long code lines');
             }
+            syncScrollableRegion(wrapper);
         });
         if (persist) {
             writeStorage(codeWrapKey, wrapped ? 'wrap' : 'scroll');
+            announce(wrapped
+                ? 'Long lines now wrap in every code block'
+                : 'Code blocks now scroll long lines');
         }
     }
 
@@ -190,16 +346,33 @@
             return element.id;
         }));
         var codeIndex = 0;
-        doc.querySelectorAll('[data-post-content] pre > code').forEach(function (code) {
-            var pre = code.parentElement;
+        // Iterate <pre>, not "pre > code": a listing pasted without a <code>
+        // child would otherwise get none of the affordances its neighbours have.
+        doc.querySelectorAll('[data-post-content] pre').forEach(function (pre) {
             if (pre.parentElement.classList.contains('shell-code-block')) {
+                return;
+            }
+            var code = pre.querySelector(':scope > code');
+            if (!code) {
+                code = doc.createElement('code');
+                while (pre.firstChild) {
+                    code.appendChild(pre.firstChild);
+                }
+                pre.appendChild(code);
+            }
+
+            // Always strip the "// file:" hint, even when data-filename already
+            // named the block, so the marker never leaks into the rendered
+            // listing, the copy payload or the download.
+            var declaredName = filenameFromSource(code);
+            var file = filenameFor(pre, code) || declaredName;
+            var language = languageIdentifier(code);
+            var source = code.textContent;
+            if (!source.trim()) {
                 return;
             }
             codeIndex += 1;
             ensureId(pre, 'code-source-' + codeIndex, used);
-            var file = filenameFor(pre, code) || filenameFromSource(code);
-            var language = languageIdentifier(code);
-            var source = code.textContent;
             code.dataset.shellLanguage = language;
 
             var wrapper = doc.createElement('div');
@@ -207,28 +380,38 @@
                 + (file ? 'shell-code-block--identified' : 'shell-code-block--anonymous');
             wrapper.dataset.filename = file;
             wrapper.dataset.language = language;
+            wrapper.dataset.regionLabel = (file || languageName(language)) + ' listing';
             pre.parentNode.insertBefore(wrapper, pre);
             wrapper.appendChild(pre);
 
+            // The header is unconditional. Gating it on a filename left every
+            // block on a filename-less site with a reserved but empty bar and no
+            // way to tell what language it was reading.
             var toolbar = doc.createElement('div');
             toolbar.className = 'shell-code-toolbar';
+            var identity = doc.createElement('span');
+            identity.className = 'shell-code-toolbar__identity';
             if (file) {
-                var identity = doc.createElement('span');
-                identity.className = 'shell-code-toolbar__identity';
                 var filename = doc.createElement('span');
                 filename.className = 'shell-code-toolbar__file';
                 filename.textContent = file;
                 identity.appendChild(filename);
-                var label = doc.createElement('span');
-                label.className = 'shell-code-toolbar__language';
-                label.textContent = languageName(language);
-                identity.appendChild(label);
-                toolbar.appendChild(identity);
             }
+            var label = doc.createElement('span');
+            label.className = 'shell-code-toolbar__language';
+            label.textContent = languageName(language);
+            identity.appendChild(label);
+            toolbar.appendChild(identity);
 
             var actions = doc.createElement('span');
             actions.className = 'shell-code-toolbar__actions';
-            var wrap = createCodeButton('shell-code-wrap', 'Wrap', 'Wrap long code lines');
+            // Wrapping is a saved reading preference that applies to the whole
+            // page, so the name says so rather than implying it is local.
+            var wrap = createCodeButton(
+                'shell-code-wrap',
+                'Wrap',
+                'Wrap long lines in every code block'
+            );
             wrap.dataset.codeWrap = '';
             wrap.setAttribute('aria-pressed', 'false');
             wrap.addEventListener('click', function () {
@@ -257,10 +440,11 @@
             var copy = createCodeButton('copy-code', 'Copy', 'Copy code block');
             copy.addEventListener('click', function () {
                 copyText(source).then(function () {
-                    copy.textContent = 'Copied';
-                    setTimeout(function () { copy.textContent = 'Copy'; }, 1600);
+                    actionFeedback(copy, 'Copied');
                 }).catch(function () {
-                    copy.textContent = 'Copy failed';
+                    // The failure label resets like the success one; leaving it
+                    // pinned made a single denied clipboard call look permanent.
+                    actionFeedback(copy, 'Copy failed');
                 });
             });
             actions.appendChild(copy);
@@ -270,12 +454,11 @@
             var lineCount = addLineNumbers(wrapper, code);
 
             if (lineCount > longCodeThreshold) {
+                var previewLines = previewLineCount(wrapper);
+                var collapseLabel = 'Collapse to ' + previewLines + '-line preview';
+                var expandLabel = 'Show all ' + lineCount + ' lines';
                 wrapper.classList.add('shell-code-block--collapsible', 'shell-code-block--collapsed');
-                var expand = createCodeButton(
-                    'shell-code-expand',
-                    'Show all ' + lineCount + ' lines',
-                    'Show all ' + lineCount + ' lines'
-                );
+                var expand = createCodeButton('shell-code-expand', expandLabel, expandLabel);
                 expand.dataset.codeExpand = '';
                 expand.setAttribute('aria-expanded', 'false');
                 expand.setAttribute('aria-controls', pre.id);
@@ -283,11 +466,20 @@
                     var expanded = expand.getAttribute('aria-expanded') !== 'true';
                     wrapper.classList.toggle('shell-code-block--collapsed', !expanded);
                     expand.setAttribute('aria-expanded', String(expanded));
-                    expand.textContent = expanded ? 'Collapse to 16-line preview' : 'Show all ' + lineCount + ' lines';
+                    expand.textContent = expanded ? collapseLabel : expandLabel;
                     expand.setAttribute('aria-label', expand.textContent);
+                    if (!expanded) {
+                        // Collapsing removes height above the button that was
+                        // just clicked, so everything below slides up and the
+                        // reader lands somewhere further down the article. Pull
+                        // the block back into view to keep their place.
+                        revealBlockTop(wrapper);
+                    }
+                    syncScrollableRegion(wrapper);
                 });
                 wrapper.appendChild(expand);
             }
+            syncScrollableRegion(wrapper);
         });
         setCodeWrapping(preferredWrap, false);
     }
@@ -295,7 +487,15 @@
     function highlightCodeBlocks() {
         doc.querySelectorAll('[data-post-content] pre > code').forEach(function (code) {
             var language = code.dataset.shellLanguage || '';
-            if (window.hljs && !code.dataset.highlighted && (!language || window.hljs.getLanguage(language))) {
+            /*
+             * Only ever highlight a language the author declared. Letting
+             * highlight.js auto-detect the rest meant it guessed confidently and
+             * wrongly on everything that is not source: ASCII diagrams came out
+             * as C++, key/value listings as CSS, and bare English words inside
+             * box-drawing art were painted as keywords. An unstyled listing is
+             * strictly better than a confidently mislabelled one.
+             */
+            if (window.hljs && !code.dataset.highlighted && language && window.hljs.getLanguage(language)) {
                 try {
                     window.hljs.highlightElement(code);
                 } catch (error) {
@@ -304,6 +504,9 @@
                 }
             }
         });
+        // Tokenising can change a listing's intrinsic width, so re-evaluate
+        // which blocks actually scroll.
+        syncAllScrollableRegions();
     }
 
     function enhanceRawEmbeds() {
@@ -1276,11 +1479,26 @@
         window.addEventListener('resize', update);
     }
 
-    function actionFeedback(button, success, fallback) {
-        var original = button.textContent;
-        button.textContent = success;
-        setTimeout(function () { button.textContent = original; }, 1800);
-        return fallback;
+    /*
+     * Shows a transient label on a button and restores it afterwards.
+     *
+     * The idle label is captured once and kept on the element: reading it fresh
+     * on every call meant a second click inside the reset window captured the
+     * feedback text as the "original", and the button kept that text forever.
+     * The accessible name is deliberately left alone — it stays stable while the
+     * status goes to the live region.
+     */
+    function actionFeedback(button, message) {
+        if (typeof button.dataset.idleLabel !== 'string') {
+            button.dataset.idleLabel = button.textContent;
+        }
+        button.textContent = message;
+        announce(message);
+        window.clearTimeout(Number(button.dataset.feedbackTimer) || 0);
+        button.dataset.feedbackTimer = String(window.setTimeout(function () {
+            button.textContent = button.dataset.idleLabel;
+            delete button.dataset.feedbackTimer;
+        }, 1800));
     }
 
     function setupArticleActions() {
@@ -1339,6 +1557,7 @@
         setupBackToTop();
         setupReadingProgress();
         setupArticleActions();
+        watchCodeBlockOverflow();
         loadSyntaxHighlighting().catch(function () {
             // Code stays readable and receives the local toolbar even when the
             // optional highlighter cannot be loaded.
