@@ -1980,9 +1980,16 @@ body.reader-focus .reader-tools__trigger {
     min-width: 0;
 }
 
+/*
+ * Content-sized tracks rather than equal halves. "Artifacts" is a longer word
+ * than "Outline", so forcing both tabs to 1fr clipped the artifact count behind
+ * an ellipsis in the sidebar. Auto tracks still absorb the leftover space, so
+ * the bar stays filled, and they fall back to ellipsis only if the labels
+ * genuinely cannot fit.
+ */
 .toc__tabs {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(2, auto);
     margin: 0 0 .72rem;
     padding: .18rem;
     border: 1px solid var(--shell-border);
@@ -2838,12 +2845,19 @@ body.reader-focus .reader-tools__trigger {
         margin: 0 0 1.5rem;
     }
 
+    /*
+     * Fully opaque, not near-opaque: here the map is a sticky panel that covers
+     * article text rather than a column beside it. At .97 the prose underneath
+     * stayed legible through the panel — only a few RGB levels, but enough to
+     * read as ghosting against a flat dark surface, and it sat right behind the
+     * waypoint labels. There is no backdrop-filter, so the alpha bought nothing.
+     */
     .toc {
         position: static;
         max-height: none;
         padding: .65rem;
         border: 1px solid var(--shell-border);
-        background: rgba(20, 30, 42, .97);
+        background: #141e2a;
         box-shadow: 0 10px 24px rgba(0, 0, 0, .22);
     }
 
