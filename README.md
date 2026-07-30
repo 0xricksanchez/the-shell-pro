@@ -44,7 +44,8 @@ Re-check custom setting values after uploading a theme version that changes the 
 | A tag named **Field Note**, **Deep Dive**, **Lab Log**, **Tool Release**, or **Advisory** | Sets the post-type badge (fallback: *Research note* in the article header only) |
 | Internal tag `#series: Name` | Renders an ordered series box on every post sharing it |
 | Internal tag `#updated` | Shows the updated date (Ghost mutates `updated_at` on trivial edits, so it is opt-in) |
-| First code-block line `// file: path.ext` or `# file: path.ext` | Shows the filename in the code toolbar |
+| `H2`–`H5` section headings (`H1` remains the post/page title) | Populate the sticky, level-preserving table of contents |
+| First code-block line `// file: path.ext`, `# file: path.ext`, or `; file: path.ext` | Shows the filename in the code toolbar |
 | Blockquote starting `> **Method:** …` | Research block; recognised labels include Environment, Hypothesis, Method, Finding, Limitation, Safety, Reproduction |
 | `## Evidence & references` heading (or Sources / Further reading) | Groups that section into an evidence panel |
 | Ghost pages with slug `topics` / `archives` | Auto-select the tag-directory and archive templates (archive lists the latest 100 — use `routes.yaml` collections beyond that) |

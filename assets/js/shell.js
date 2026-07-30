@@ -63,7 +63,9 @@
             doc.body.appendChild(textarea);
             textarea.select();
             try {
-                doc.execCommand('copy');
+                if (!doc.execCommand('copy')) {
+                    throw new Error('Copy command was rejected');
+                }
                 resolve();
             } catch (error) {
                 reject(error);
@@ -72,9 +74,14 @@
         });
     }
 
-    function languageName(code) {
+    function languageIdentifier(code) {
         var match = code.className.match(/(?:language-|lang-)([a-z0-9+_-]+)/i);
-        return match ? match[1].replace(/[-_]/g, ' ') : 'code';
+        return match ? match[1] : '';
+    }
+
+    function languageName(code) {
+        var identifier = languageIdentifier(code);
+        return identifier ? identifier.replace(/[-_]/g, ' ') : 'code';
     }
 
     function filenameFor(pre, code) {
@@ -82,7 +89,7 @@
     }
 
     function filenameFromSource(code) {
-        var match = code.textContent.match(/^(?:\/\/|#)\s*file:\s*([^\n]+)\n/);
+        var match = code.textContent.match(/^(?:\/\/|#|;)\s*file:\s*([^\n]+)\n/);
         if (!match) {
             return '';
         }
@@ -111,8 +118,14 @@
         doc.querySelectorAll('[data-post-content] pre > code').forEach(function (code) {
             var pre = code.parentElement;
             var file = filenameFor(pre, code) || filenameFromSource(code);
-            if (window.hljs && !code.dataset.highlighted) {
-                window.hljs.highlightElement(code);
+            var language = languageIdentifier(code);
+            if (window.hljs && !code.dataset.highlighted && (!language || window.hljs.getLanguage(language))) {
+                try {
+                    window.hljs.highlightElement(code);
+                } catch (error) {
+                    // Highlighting is optional; preserve the readable local
+                    // code-block UI if a third-party grammar fails.
+                }
             }
 
             if (pre.parentElement.classList.contains('shell-code-block')) {
@@ -148,7 +161,7 @@
                     button.textContent = 'Copied';
                     setTimeout(function () { button.textContent = 'Copy'; }, 1600);
                 }).catch(function () {
-                    button.textContent = 'Select code';
+                    button.textContent = 'Copy failed';
                 });
             });
 
@@ -306,7 +319,7 @@
         }
 
         var used = new Set(Array.from(doc.querySelectorAll('[id]')).map(function (element) { return element.id; }));
-        var headings = Array.from(content.querySelectorAll('h2, h3'));
+        var headings = Array.from(content.querySelectorAll('h1, h2, h3, h4, h5'));
         headings.forEach(function (heading) {
             if (heading.id) {
                 return;
@@ -335,27 +348,31 @@
         list.className = 'toc__list';
         list.id = 'article-toc-list';
         var links = new Map();
-        var currentParent;
+        var outline = [];
         headings.forEach(function (heading) {
+            var level = Number(heading.tagName.slice(1));
             var item = doc.createElement('li');
-            item.className = heading.tagName === 'H3' ? 'toc__item toc__item--sub' : 'toc__item';
+            item.className = 'toc__item toc__item--level-' + level;
             var link = doc.createElement('a');
             link.href = '#' + heading.id;
             link.textContent = heading.textContent;
             item.appendChild(link);
-            if (heading.tagName === 'H2') {
-                list.appendChild(item);
-                currentParent = item;
-            } else if (currentParent) {
-                var nested = currentParent.lastElementChild;
-                if (!nested || nested.tagName !== 'OL') {
-                    nested = doc.createElement('ol');
-                    currentParent.appendChild(nested);
-                }
-                nested.appendChild(item);
-            } else {
-                list.appendChild(item);
+
+            while (outline.length && outline[outline.length - 1].level >= level) {
+                outline.pop();
             }
+
+            var parent = outline[outline.length - 1];
+            var targetList = list;
+            if (parent) {
+                if (!parent.childList) {
+                    parent.childList = doc.createElement('ol');
+                    parent.item.appendChild(parent.childList);
+                }
+                targetList = parent.childList;
+            }
+            targetList.appendChild(item);
+            outline.push({level: level, item: item, childList: null});
             links.set(heading.id, link);
         });
         var count = doc.createElement('p');
@@ -369,6 +386,16 @@
             var active = links.get(id);
             if (active) {
                 active.setAttribute('aria-current', 'location');
+                if (!window.matchMedia('(max-width: 900px)').matches) {
+                    var tocBox = toc.getBoundingClientRect();
+                    var activeBox = active.getBoundingClientRect();
+                    var breathingRoom = 4;
+                    if (activeBox.top < tocBox.top + breathingRoom) {
+                        toc.scrollTop += activeBox.top - tocBox.top - breathingRoom;
+                    } else if (activeBox.bottom > tocBox.bottom - breathingRoom) {
+                        toc.scrollTop += activeBox.bottom - tocBox.bottom + breathingRoom;
+                    }
+                }
             }
         }
 
@@ -619,15 +646,29 @@
         if (!toggle || !menu) {
             return;
         }
+        function setMenuOpen(open) {
+            toggle.setAttribute('aria-expanded', String(open));
+            menu.classList.toggle('is-open', open);
+        }
         toggle.addEventListener('click', function () {
-            var open = toggle.getAttribute('aria-expanded') === 'true';
-            toggle.setAttribute('aria-expanded', String(!open));
-            menu.classList.toggle('is-open', !open);
+            setMenuOpen(toggle.getAttribute('aria-expanded') !== 'true');
+        });
+        menu.addEventListener('click', function (event) {
+            if (event.target.closest('a')) {
+                setMenuOpen(false);
+            }
+        });
+        doc.addEventListener('click', function (event) {
+            if (toggle.getAttribute('aria-expanded') === 'true'
+                && !toggle.contains(event.target)
+                && !menu.contains(event.target)) {
+                setMenuOpen(false);
+            }
         });
         doc.addEventListener('keydown', function (event) {
-            if (event.key === 'Escape') {
-                toggle.setAttribute('aria-expanded', 'false');
-                menu.classList.remove('is-open');
+            if (event.key === 'Escape' && toggle.getAttribute('aria-expanded') === 'true') {
+                setMenuOpen(false);
+                toggle.focus();
             }
         });
     }
@@ -640,7 +681,10 @@
         var update = function () { button.hidden = window.scrollY < 500; };
         update();
         window.addEventListener('scroll', update, { passive: true });
-        button.addEventListener('click', function () { window.scrollTo({ top: 0, behavior: 'smooth' }); });
+        button.addEventListener('click', function () {
+            var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            window.scrollTo({top: 0, behavior: reducedMotion ? 'auto' : 'smooth'});
+        });
     }
 
     function setupReadingProgress() {
@@ -689,14 +733,14 @@
             copyText(url).then(function () {
                 actionFeedback(copyLink, 'Link copied');
             }).catch(function () {
-                actionFeedback(copyLink, 'Select link');
+                actionFeedback(copyLink, 'Copy failed');
             });
         });
         copyCitation.addEventListener('click', function () {
             copyText(citation).then(function () {
                 actionFeedback(copyCitation, 'Citation copied');
             }).catch(function () {
-                actionFeedback(copyCitation, 'Select citation');
+                actionFeedback(copyCitation, 'Copy failed');
             });
         });
         if (navigator.share) {

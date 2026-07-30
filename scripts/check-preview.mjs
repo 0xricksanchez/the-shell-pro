@@ -233,6 +233,19 @@ async function inspectSeoRoute({
         const robots = Array.from(document.querySelectorAll('meta[name="robots"]')).map((meta) => meta.content);
         const breadcrumbPositions = Array.from(document.querySelectorAll('.breadcrumbs [itemprop="position"]'))
             .map((meta) => meta.content);
+        const ids = Array.from(document.querySelectorAll('[id]')).map((element) => element.id);
+        const duplicateIds = ids.filter((id, index) => ids.indexOf(id) !== index);
+        const missingAriaTargets = Array.from(document.querySelectorAll('[aria-controls]'))
+            .map((element) => element.getAttribute('aria-controls'))
+            .filter((id) => !document.getElementById(id));
+        const unsafeBlankTargets = Array.from(document.querySelectorAll('a[target="_blank"]'))
+            .filter((link) => !(link.getAttribute('rel') || '').split(/\\s+/).includes('noopener'))
+            .length;
+        const headingLevels = Array.from(document.querySelectorAll('main h1, main h2, main h3, main h4, main h5, main h6'))
+            .map((heading) => Number(heading.tagName.slice(1)));
+        const skippedHeadingLevels = headingLevels.filter((level, index) =>
+            index > 0 && level > headingLevels[index - 1] + 1
+        );
         return {
             titles: document.querySelectorAll('head > title').length,
             title: document.title.trim(),
@@ -248,6 +261,10 @@ async function inspectSeoRoute({
             badLinks,
             breadcrumbs: document.querySelectorAll('.breadcrumbs').length,
             breadcrumbPositions,
+            duplicateIds,
+            missingAriaTargets,
+            unsafeBlankTargets,
+            skippedHeadingLevels,
             missingMainImageAlt: Array.from(document.querySelectorAll('main img')).filter((image) => !image.hasAttribute('alt')).length,
             lang: document.documentElement.lang
         };
@@ -259,6 +276,14 @@ async function inspectSeoRoute({
     check(state.badLinks === 0, `${path} main-content links are crawlable anchors`, String(state.badLinks));
     check(state.missingMainImageAlt === 0, `${path} main-content images declare alt semantics`, String(state.missingMainImageAlt));
     check(Boolean(state.lang), `${path} declares the document language`, state.lang);
+    check(
+        state.duplicateIds.length === 0
+            && state.missingAriaTargets.length === 0
+            && state.unsafeBlankTargets === 0,
+        `${path} keeps IDs, ARIA references, and new-tab links structurally safe`,
+        JSON.stringify(state)
+    );
+    check(state.skippedHeadingLevels.length === 0, `${path} keeps a sequential heading outline`, JSON.stringify(state.skippedHeadingLevels));
 
     if (expectDescription) {
         check(
@@ -397,6 +422,21 @@ async function inspectHome() {
     check(state.externalMarked && !state.internalMarkedExternal, 'only external navigation is visibly marked');
     check(state.heroImage && state.heroPriority === 'high' && state.heroAlt === '', 'homepage cover is an HTML-discoverable decorative LCP candidate', JSON.stringify(state));
     check(state.firstCardLoading === 'lazy', 'homepage listing images stay lazy behind the prioritized hero', state.firstCardLoading);
+
+    await client.send('Emulation.setEmulatedMedia', {
+        media: 'screen',
+        features: [{name: 'prefers-reduced-motion', value: 'reduce'}]
+    });
+    const reducedMotion = await evaluate(`(() => {
+        const button = document.querySelector('[data-back-to-top]');
+        let behavior = '';
+        window.scrollTo = (options) => { behavior = options?.behavior || ''; };
+        button.hidden = false;
+        button.click();
+        return {behavior};
+    })()`);
+    check(reducedMotion.behavior !== 'smooth', 'back-to-top respects reduced-motion preference', JSON.stringify(reducedMotion));
+    await client.send('Emulation.setEmulatedMedia', {media: 'screen', features: []});
 }
 
 async function inspectMobileHome() {
@@ -432,15 +472,31 @@ async function inspectCollapsedNavigation() {
         const toggle = document.querySelector('[data-menu-toggle]');
         const menu = document.querySelector('[data-menu]');
         const subscribe = document.querySelector('.site-actions .button');
+        const firstLink = menu?.querySelector('a');
         toggle?.click();
+        const opened = menu?.classList.contains('is-open') || false;
+        const openDisplay = menu ? getComputedStyle(menu).display : 'none';
+        firstLink?.focus();
+        document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true}));
+        const escapeClosed = !menu?.classList.contains('is-open')
+            && toggle?.getAttribute('aria-expanded') === 'false';
+        const escapeReturnedFocus = document.activeElement === toggle;
+        toggle?.click();
+        document.querySelector('main')?.dispatchEvent(new MouseEvent('click', {bubbles: true}));
         return {
             toggleDisplay: toggle ? getComputedStyle(toggle).display : 'none',
-            menuOpen: menu?.classList.contains('is-open') || false,
-            menuDisplay: menu ? getComputedStyle(menu).display : 'none',
+            opened,
+            openDisplay,
+            escapeClosed,
+            escapeReturnedFocus,
+            outsideClickClosed: !menu?.classList.contains('is-open')
+                && toggle?.getAttribute('aria-expanded') === 'false',
             subscribeDisplay: subscribe ? getComputedStyle(subscribe).display : 'none'
         };
     })()`);
-    check(state.toggleDisplay !== 'none' && state.menuOpen && state.menuDisplay !== 'none', 'navigation collapses and opens cleanly at 920 px', JSON.stringify(state));
+    check(state.toggleDisplay !== 'none' && state.opened && state.openDisplay !== 'none', 'navigation collapses and opens cleanly at 920 px', JSON.stringify(state));
+    check(state.escapeClosed && state.escapeReturnedFocus, 'Escape closes mobile navigation and returns focus to its toggle', JSON.stringify(state));
+    check(state.outsideClickClosed, 'clicking outside closes mobile navigation', JSON.stringify(state));
     check(state.subscribeDisplay !== 'none', 'Subscribe remains available above the 700 px breakpoint');
 }
 
@@ -499,6 +555,140 @@ async function inspectPublicationEmbed() {
     );
 }
 
+async function inspectUnknownCodeFallback() {
+    const injection = await client.send('Page.addScriptToEvaluateOnNewDocument', {
+        source: `
+            document.addEventListener('DOMContentLoaded', () => {
+                const content = document.querySelector('[data-post-content]');
+                if (!content) return;
+                const pre = document.createElement('pre');
+                const code = document.createElement('code');
+                code.className = 'language-unsupported-preview';
+                code.textContent = 'unknown_syntax = still_readable\\nsecond_line = true';
+                pre.dataset.qualitySweep = 'unsupported-language';
+                pre.appendChild(code);
+                content.prepend(pre);
+            }, {once: true});
+        `
+    });
+    try {
+        await navigate('/tracing-the-edge-200ms-feedback-loop/');
+        const state = await evaluate(`(async () => {
+            await new Promise((resolve) => setTimeout(resolve, 100));
+            const injected = document.querySelector('[data-quality-sweep="unsupported-language"]');
+            const following = document.querySelector('code.language-typescript');
+            return {
+                injectedWrapped: Boolean(injected?.closest('.shell-code-block')),
+                injectedReadable: injected?.textContent.includes('unknown_syntax = still_readable') || false,
+                followingWrapped: Boolean(following?.closest('.shell-code-block'))
+            };
+        })()`);
+        check(
+            state.injectedWrapped && state.injectedReadable && state.followingWrapped,
+            'unsupported syntax remains readable without aborting later code enhancements',
+            JSON.stringify(state)
+        );
+    } finally {
+        await client.send('Page.removeScriptToEvaluateOnNewDocument', {identifier: injection.identifier});
+    }
+}
+
+async function inspectHighlighterFailureFallback() {
+    await client.send('Network.enable');
+    await client.send('Network.setCacheDisabled', {cacheDisabled: true});
+    await client.send('Network.setBlockedURLs', {urls: ['*cdnjs.cloudflare.com*']});
+    try {
+        await navigate('/tracing-the-edge-200ms-feedback-loop/');
+        const state = await evaluate(`(async () => {
+            await new Promise((resolve) => setTimeout(resolve, 100));
+            const nasm = document.querySelector('code.language-nasm');
+            return {
+                highlighterUnavailable: !window.hljs,
+                wrappedBlocks: document.querySelectorAll('.shell-code-block').length,
+                nasmFilename: nasm?.closest('.shell-code-block')?.querySelector('.shell-code-toolbar__file')?.textContent.trim() || '',
+                nasmReadable: nasm?.textContent.includes('BITS 64') || false
+            };
+        })()`);
+        check(
+            state.highlighterUnavailable
+                && state.wrappedBlocks >= 6
+                && state.nasmFilename === 'probes/remaining_budget.asm'
+                && state.nasmReadable,
+            'code blocks remain readable and functional when the highlighting CDN is unavailable',
+            JSON.stringify(state)
+        );
+    } finally {
+        await client.send('Network.setBlockedURLs', {urls: []});
+        await client.send('Network.setCacheDisabled', {cacheDisabled: false});
+    }
+}
+
+async function inspectAccessibilityTree() {
+    await navigate('/tracing-the-edge-200ms-feedback-loop/');
+    const tree = await client.send('Accessibility.getFullAXTree');
+    const exposed = (tree.nodes || []).filter((node) => !node.ignored);
+    const interactiveRoles = new Set(['button', 'link']);
+    const unnamedControls = exposed.filter((node) =>
+        interactiveRoles.has(node.role?.value)
+            && !(node.name?.value || '').trim()
+    ).map((node) => node.role?.value);
+    const roles = exposed.map((node) => node.role?.value);
+    check(
+        unnamedControls.length === 0,
+        'the article accessibility tree has no unnamed links or buttons',
+        JSON.stringify(unnamedControls)
+    );
+    check(
+        roles.filter((role) => role === 'main').length === 1
+            && roles.includes('banner')
+            && roles.includes('contentinfo')
+            && roles.includes('navigation'),
+        'the article exposes one main region with banner, navigation, and footer landmarks',
+        JSON.stringify(roles.filter((role) => ['main', 'banner', 'contentinfo', 'navigation'].includes(role)))
+    );
+}
+
+async function inspectResponsiveBoundaries() {
+    const cases = [
+        ...[320, 440, 700, 701, 900, 901, 960, 961, 1440].map((width) => ['/', width]),
+        ...[320, 440, 700, 701, 900, 901, 960, 961, 1440].map((width) => ['/tracing-the-edge-200ms-feedback-loop/', width]),
+        ...[320, 701, 901, 961, 1440].map((width) => ['/topics/', width]),
+        ...[320, 701, 961].map((width) => ['/archives/', width])
+    ];
+    const failures = [];
+    for (const [path, width] of cases) {
+        await navigate(path, width, 800);
+        const state = await evaluate(`(async () => {
+            window.scrollTo({top: 800, behavior: 'instant'});
+            await new Promise((resolve) => setTimeout(resolve, 50));
+            const parts = ['.site-brand', '.site-actions', '.site-nav']
+                .map((selector) => document.querySelector(selector))
+                .filter((element) => element && getComputedStyle(element).display !== 'none')
+                .map((element) => {
+                    const box = element.getBoundingClientRect();
+                    return {left: box.left, right: box.right, top: box.top, bottom: box.bottom};
+                });
+            const overlaps = parts.some((left, index) => parts.slice(index + 1).some((right) =>
+                Math.min(left.right, right.right) - Math.max(left.left, right.left) > 1
+                    && Math.min(left.bottom, right.bottom) - Math.max(left.top, right.top) > 1
+            ));
+            return {
+                overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+                overlaps,
+                headerHeight: document.querySelector('.site-header')?.getBoundingClientRect().height || 0
+            };
+        })()`);
+        if (state.overflow > 0 || state.overlaps || state.headerHeight > 80) {
+            failures.push({path, width, ...state});
+        }
+    }
+    check(
+        failures.length === 0,
+        'responsive breakpoint matrix has no horizontal overflow or header collisions',
+        JSON.stringify(failures)
+    );
+}
+
 async function inspectErrorPage() {
     await navigate('/definitely-not-a-preview-route/');
     const state = await evaluate(`(() => ({
@@ -521,11 +711,26 @@ async function inspectLongArticle() {
         const seriesStatus = document.querySelector('.article-series__status')?.textContent.trim() || '';
         const original = document.querySelector('.image-lightbox__original');
         const featureImage = document.querySelector('.article-feature-image img');
+        const nasmCode = document.querySelector('[data-post-content] code.language-nasm');
+        const nasmBlock = nasmCode?.closest('.shell-code-block');
         const lightboxOpen = document.querySelector('.image-lightbox')?.open || false;
         document.querySelector('.image-lightbox')?.close();
+        const tocLinks = Array.from(document.querySelectorAll('[data-toc] a'));
+        const deepHeadingLinks = [
+            tocLinks.find((link) => link.hash === '#required-identity-fields'),
+            tocLinks.find((link) => link.hash === '#cardinality-guardrail')
+        ];
+        const parentHeading = (link) =>
+            link?.closest('li')?.parentElement?.closest('li')?.querySelector(':scope > a')?.hash || '';
         return {
             highlightLoaded: Array.from(document.scripts).some((script) => script.src.includes('highlight')),
-            tocLinks: document.querySelectorAll('[data-toc] a').length,
+            tocLinks: tocLinks.length,
+            deepHeadingsPresent: deepHeadingLinks.every(Boolean),
+            deepHeadingParents: deepHeadingLinks.map(parentHeading),
+            nasmFilename: nasmBlock?.querySelector('.shell-code-toolbar__file')?.textContent.trim() || '',
+            nasmSource: nasmCode?.textContent || '',
+            highlightedBlocks: document.querySelectorAll('[data-post-content] code[data-highlighted]').length,
+            nasmHighlighted: nasmCode?.classList.contains('hljs') || false,
             lightboxOpen,
             originalLink: original?.href || '',
             originalLabel: original?.textContent.trim() || '',
@@ -536,9 +741,26 @@ async function inspectLongArticle() {
             featurePriority: featureImage?.fetchPriority || ''
         };
     })()`);
-    check(state.highlightLoaded, 'Highlight.js remains available on articles');
+    check(
+        state.highlightLoaded && state.highlightedBlocks >= 6 && state.nasmHighlighted,
+        'Highlight.js loads and highlights technical code, including NASM',
+        JSON.stringify(state)
+    );
     check(state.featurePriority === 'high', 'article feature image receives LCP fetch priority', state.featurePriority);
     check(state.tocLinks >= 6, 'long-article TOC is generated', String(state.tocLinks));
+    check(
+        state.deepHeadingsPresent
+            && state.deepHeadingParents[0] === '#define-a-stable-span-contract'
+            && state.deepHeadingParents[1] === '#required-identity-fields',
+        'long-article TOC includes and nests H4/H5 waypoints',
+        JSON.stringify(state)
+    );
+    check(
+        state.nasmFilename === 'probes/remaining_budget.asm'
+            && !state.nasmSource.startsWith('; file:'),
+        'NASM file metadata moves from the source comment into the code toolbar',
+        JSON.stringify({filename: state.nasmFilename, sourceStart: state.nasmSource.slice(0, 48)})
+    );
     check(state.lightboxOpen && state.originalLink && state.originalLabel.includes('original'), 'image dialog exposes the original asset', JSON.stringify(state));
     check(state.relatedAlignment === 'flex-start', 'related-post content is top-aligned', state.relatedAlignment);
     check(state.seriesLinks === 3, 'internal #series tags render a complete server-side research sequence', String(state.seriesLinks));
@@ -565,6 +787,70 @@ async function inspectLongArticle() {
         JSON.stringify(anchorState)
     );
 
+    await navigate('/tracing-the-edge-200ms-feedback-loop/', 1280, 600);
+    const tocFollowState = await evaluate(`(async () => {
+        const headings = Array.from(document.querySelectorAll('[data-post-content] h1, [data-post-content] h2, [data-post-content] h3, [data-post-content] h4, [data-post-content] h5'));
+        const target = headings[headings.length - 1];
+        const targetTop = window.scrollY + target.getBoundingClientRect().top - window.innerHeight * .25;
+        window.dispatchEvent(new WheelEvent('wheel'));
+        window.scrollTo({top: targetTop, behavior: 'instant'});
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        const toc = document.querySelector('[data-toc]');
+        const active = toc?.querySelector('a[aria-current="location"]');
+        const tocBox = toc?.getBoundingClientRect();
+        const activeBox = active?.getBoundingClientRect();
+        return {
+            expected: '#' + target.id,
+            active: active?.getAttribute('href') || '',
+            activeVisible: Boolean(
+                tocBox && activeBox
+                    && activeBox.top >= tocBox.top
+                    && activeBox.bottom <= tocBox.bottom
+            ),
+            tocScroll: toc?.scrollTop || 0,
+            pageScroll: window.scrollY
+        };
+    })()`);
+    check(
+        tocFollowState.active === tocFollowState.expected
+            && tocFollowState.activeVisible
+            && tocFollowState.tocScroll > 0,
+        'desktop TOC keeps the active waypoint visible while reading',
+        JSON.stringify(tocFollowState)
+    );
+
+    await navigate('/');
+    await navigate('/tracing-the-edge-200ms-feedback-loop/#cardinality-guardrail');
+    const directHashState = await evaluate(`(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 900));
+        const target = document.querySelector('#cardinality-guardrail');
+        const active = document.querySelector('[data-toc] a[aria-current="location"]');
+        return {
+            targetTop: target?.getBoundingClientRect().top ?? -1,
+            active: active?.getAttribute('href') || ''
+        };
+    })()`);
+    check(
+        directHashState.targetTop >= 78
+            && directHashState.targetTop <= 110
+            && directHashState.active === '#cardinality-guardrail',
+        'direct deep links settle below the sticky header with the matching waypoint active',
+        JSON.stringify(directHashState)
+    );
+
+    await navigate('/tracing-the-edge-200ms-feedback-loop/');
+    const copyFailureState = await evaluate(`(async () => {
+        Object.defineProperty(navigator, 'clipboard', {
+            configurable: true,
+            value: {writeText: () => Promise.reject(new Error('quality sweep rejection'))}
+        });
+        const button = document.querySelector('.copy-code');
+        button?.click();
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        return {feedback: button?.textContent.trim() || ''};
+    })()`);
+    check(copyFailureState.feedback === 'Copy failed', 'copy controls report clipboard failure honestly', JSON.stringify(copyFailureState));
+
     await client.send('Emulation.setEmulatedMedia', {media: 'print'});
     const printState = await evaluate(`(() => ({
         headerDisplay: getComputedStyle(document.querySelector('.site-header')).display,
@@ -586,13 +872,26 @@ async function inspectLongArticle() {
     const mobileToc = await evaluate(`(() => {
         const container = document.querySelector('[data-toc-container]');
         const toggle = document.querySelector('.toc__toggle');
+        toggle?.click();
+        const deepLink = document.querySelector('[data-toc] a[href="#cardinality-guardrail"]');
         return {
             position: container ? getComputedStyle(container).position : '',
             top: container ? getComputedStyle(container).top : '',
-            toggleHeight: toggle?.getBoundingClientRect().height || 0
+            toggleHeight: toggle?.getBoundingClientRect().height || 0,
+            expanded: toggle?.getAttribute('aria-expanded') === 'true',
+            deepLinkHeight: deepLink?.getBoundingClientRect().height || 0,
+            overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth
         };
     })()`);
-    check(mobileToc.position === 'sticky' && mobileToc.toggleHeight >= 40, 'mobile TOC remains reachable as a sticky, touch-sized control', JSON.stringify(mobileToc));
+    check(
+        mobileToc.position === 'sticky'
+            && mobileToc.toggleHeight >= 40
+            && mobileToc.expanded
+            && mobileToc.deepLinkHeight >= 40
+            && mobileToc.overflow === 0,
+        'mobile TOC exposes deep headings as touch-sized links without overflow',
+        JSON.stringify(mobileToc)
+    );
 }
 
 async function inspectEndmatter() {
@@ -690,6 +989,10 @@ async function main() {
     await inspectShortArticle();
     await inspectListingImagePriority();
     await inspectPublicationEmbed();
+    await inspectUnknownCodeFallback();
+    await inspectHighlighterFailureFallback();
+    await inspectAccessibilityTree();
+    await inspectResponsiveBoundaries();
     await inspectErrorPage();
     await inspectLongArticle();
     await inspectFooter();

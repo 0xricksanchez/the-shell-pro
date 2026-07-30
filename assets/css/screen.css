@@ -1573,33 +1573,72 @@ button:focus-visible,
 }
 
 .toc ol ol {
-    margin: .18rem 0 0;
-    padding-left: .62rem;
+    margin: .12rem 0 .08rem;
+    padding-left: .52rem;
     border-left: 1px solid color-mix(in srgb, var(--shell-border) 72%, transparent);
+}
+
+.toc ol ol ol {
+    padding-left: .45rem;
 }
 
 .toc__item + .toc__item {
     margin-top: .16rem;
 }
 
-.toc__item--sub {
-    padding-left: 0;
-}
-
 .toc a {
+    position: relative;
     display: flex;
     min-height: 1.65rem;
     align-items: center;
-    padding: .08rem 0;
+    padding: .08rem .3rem .08rem .42rem;
+    border-radius: .2rem;
     color: var(--shell-muted);
     font-size: .71rem;
     line-height: 1.45;
     text-decoration: none;
+    transition: color 140ms ease, background-color 140ms ease;
+}
+
+.toc a::before {
+    position: absolute;
+    top: .34rem;
+    bottom: .34rem;
+    left: 0;
+    width: 2px;
+    border-radius: 999px;
+    background: var(--shell-accent);
+    content: "";
+    opacity: 0;
+    transform: scaleY(.35);
+    transition: opacity 140ms ease, transform 140ms ease;
+}
+
+.toc__item--level-1 > a,
+.toc__item--level-2 > a {
+    color: #aebdcb;
+    font-weight: 700;
+}
+
+.toc__item--level-3 > a {
+    font-size: .69rem;
+}
+
+.toc__item--level-4 > a,
+.toc__item--level-5 > a {
+    color: color-mix(in srgb, var(--shell-muted) 82%, transparent);
+    font-size: .66rem;
 }
 
 .toc a:hover,
 .toc a[aria-current="location"] {
     color: var(--shell-accent);
+    background: color-mix(in srgb, var(--shell-accent) 7%, transparent);
+}
+
+.toc a[aria-current="location"]::before {
+    opacity: 1;
+    transform: scaleY(1);
 }
 
 .article-footer {
@@ -2354,6 +2393,12 @@ button:focus-visible,
     .toc a {
         min-height: 2.75rem;
         padding: .35rem .25rem;
+        font-size: .71rem;
+    }
+
+    .toc a::before {
+        top: .65rem;
+        bottom: .65rem;
     }
 }
 

@@ -336,6 +336,14 @@ export function beginRequest(sample: RequestSample) {
   });
 }</code></pre>
 
+        <h4>Required identity fields</h4>
+
+        <p>The trace and route identify the operation without turning a person, host, or request into a permanent metric dimension.</p>
+
+        <h5>Cardinality guardrail</h5>
+
+        <p>Reject an attribute at the instrumentation boundary when its set of possible values cannot be bounded and reviewed.</p>
+
         <h3>Make timeouts part of the protocol</h3>
 
         <p>A timeout should travel with the request rather than being rediscovered in each dependency. Subtract a little scheduling slack at every boundary, then fail locally when the remaining budget is no longer useful. This avoids a familiar failure mode: the client gives up at 200 ms while five downstream services continue working for another thirty seconds.</p>
@@ -520,7 +528,7 @@ curl --silent --show-error http://localhost:4318/v1/traces \\
             custom_excerpt: 'A raw HTML-card fixture for responsive technical embeds.',
             meta_title: 'Technical publications and presentations',
             meta_description: 'Conference presentations, technical publications, disclosures, and research appearances.',
-            html: '<ol><li>File system fuzzing applied to the BSD operating systems:</li></ol><iframe src="https://docs.google.com/presentation/d/e/2PACX-1vTj9Th51zNyOxsywQamc5S0wQ_mLM3KFVoMeFWuPYPFNaIS0qp53luTP40dE0lGPQ/embed?start=false&amp;loop=false&amp;delayms=3000" loading="lazy" title="File system fuzzing presentation slides" frameborder="0" width="1280" height="749" allowfullscreen="true"></iframe><p><a href="https://docs.google.com/presentation/d/e/2PACX-1vTj9Th51zNyOxsywQamc5S0wQ_mLM3KFVoMeFWuPYPFNaIS0qp53luTP40dE0lGPQ/pub?start=false&amp;loop=false&amp;delayms=3000">Open the presentation</a></p><h3>Misc. Disclosures</h3><ol><li>Example research disclosure</li></ol><h3>Villages</h3><ol><li>Example conference appearance</li></ol>',
+            html: '<ol><li>File system fuzzing applied to the BSD operating systems:</li></ol><iframe src="https://docs.google.com/presentation/d/e/2PACX-1vTj9Th51zNyOxsywQamc5S0wQ_mLM3KFVoMeFWuPYPFNaIS0qp53luTP40dE0lGPQ/embed?start=false&amp;loop=false&amp;delayms=3000" loading="lazy" title="File system fuzzing presentation slides" frameborder="0" width="1280" height="749" allowfullscreen="true"></iframe><p><a href="https://docs.google.com/presentation/d/e/2PACX-1vTj9Th51zNyOxsywQamc5S0wQ_mLM3KFVoMeFWuPYPFNaIS0qp53luTP40dE0lGPQ/pub?start=false&amp;loop=false&amp;delayms=3000">Open the presentation</a></p><h2>Misc. Disclosures</h2><ol><li>Example research disclosure</li></ol><h2>Villages</h2><ol><li>Example conference appearance</li></ol>',
             status: 'published'
         }},
         {resource: 'pages', entry: {
