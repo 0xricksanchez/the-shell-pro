@@ -692,15 +692,17 @@ async function inspectUntypedCodeLabel() {
                 highlighted: code?.classList.contains('hljs') || false,
                 inferredLanguage: Array.from(code?.classList || [])
                     .find((name) => name.startsWith('language-')) || '',
-                label: wrapper?.querySelector('.shell-code-toolbar__language')?.textContent.trim() || ''
+                anonymous: wrapper?.classList.contains('shell-code-block--anonymous') || false,
+                identityPresent: Boolean(wrapper?.querySelector('.shell-code-toolbar__identity'))
             };
         })()`);
         check(
             state.wrapped
                 && state.highlighted
                 && Boolean(state.inferredLanguage)
-                && state.label === 'code',
-            'untyped code keeps a neutral toolbar label after syntax auto-detection',
+                && state.anonymous
+                && !state.identityPresent,
+            'untyped code stays syntax-aware without rendering a placeholder header',
             JSON.stringify(state)
         );
     } finally {
@@ -1093,7 +1095,16 @@ async function inspectPremiumReadingTools() {
                     ).join('\\n');
                 pre.dataset.qualitySweep = 'premium-code-tools';
                 pre.appendChild(code);
-                content.prepend(pre);
+
+                const anonymousPre = document.createElement('pre');
+                const anonymousCode = document.createElement('code');
+                anonymousCode.textContent = Array.from(
+                    {length: 36},
+                    (_, index) => 'probe_' + String(index + 1).padStart(2, '0') + '=remaining_budget'
+                ).join('\\n');
+                anonymousPre.dataset.qualitySweep = 'anonymous-code-tools';
+                anonymousPre.appendChild(anonymousCode);
+                content.prepend(anonymousPre, pre);
             }, {once: true});
         `
     });
@@ -1106,6 +1117,17 @@ async function inspectPremiumReadingTools() {
             const expand = block?.querySelector('[data-code-expand]');
             const download = block?.querySelector('[data-code-download]');
             const numbers = block?.querySelector('.code-line-numbers');
+            const anonymousBlock = document.querySelector('[data-quality-sweep="anonymous-code-tools"]')
+                ?.closest('.shell-code-block');
+            const anonymousToolbar = anonymousBlock?.querySelector('.shell-code-toolbar');
+            const anonymousPre = anonymousBlock?.querySelector('pre');
+            const anonymousCode = anonymousBlock?.querySelector('code');
+            const anonymousNumbers = anonymousBlock?.querySelector('.code-line-numbers');
+            const anonymousToolbarBox = anonymousToolbar?.getBoundingClientRect();
+            const anonymousPreBox = anonymousPre?.getBoundingClientRect();
+            const anonymousCodeBox = anonymousCode?.getBoundingClientRect();
+            const anonymousNumbersBox = anonymousNumbers?.getBoundingClientRect();
+            const expandBox = expand?.getBoundingClientRect();
             const before = {
                 collapsed: block?.classList.contains('shell-code-block--collapsed') || false,
                 expandLabel: expand?.textContent.replace(/\\s+/g, ' ').trim() || '',
@@ -1116,10 +1138,49 @@ async function inspectPremiumReadingTools() {
                 toolbarControls: block?.querySelectorAll('.shell-code-toolbar__actions button').length || 0,
                 controls: block?.querySelectorAll('button').length || 0
             };
+            const anonymous = {
+                marked: anonymousBlock?.classList.contains('shell-code-block--anonymous') || false,
+                collapsed: anonymousBlock?.classList.contains('shell-code-block--collapsed') || false,
+                filename: anonymousBlock?.dataset.filename || '',
+                identityPresent: Boolean(anonymousBlock?.querySelector('.shell-code-toolbar__identity')),
+                toolbarLabels: Array.from(anonymousToolbar?.querySelectorAll('button') || [])
+                    .map((button) => button.textContent.trim()),
+                toolbarControls: anonymousBlock
+                    ?.querySelectorAll('.shell-code-toolbar__actions button').length || 0,
+                toolbarPosition: anonymousToolbar ? getComputedStyle(anonymousToolbar).position : '',
+                toolbarSharesCodeSurface: Boolean(anonymousToolbarBox && anonymousPreBox
+                    && anonymousToolbarBox.top >= anonymousPreBox.top
+                    && anonymousToolbarBox.bottom <= anonymousPreBox.bottom),
+                firstLineClearsToolbar: Boolean(anonymousToolbarBox && anonymousCodeBox
+                    && anonymousCodeBox.top >= anonymousToolbarBox.bottom + 4),
+                lineNumbersAligned: Boolean(anonymousPreBox && anonymousNumbersBox
+                    && Math.abs(anonymousPreBox.top - anonymousNumbersBox.top) <= 1
+                    && Math.abs(anonymousPreBox.height - anonymousNumbersBox.height) <= 1),
+                visibleLineNumbers: anonymousNumbersBox
+                    ? Array.from(anonymousNumbers.children).filter((line) => {
+                        const box = line.getBoundingClientRect();
+                        return box.top >= anonymousNumbersBox.top
+                            && box.bottom <= anonymousNumbersBox.bottom + 1;
+                    }).length
+                    : 0,
+                paintedLineNumbers: anonymousNumbersBox
+                    ? Array.from(anonymousNumbers.children).filter((line) =>
+                        line.getBoundingClientRect().top < anonymousNumbersBox.bottom - 1
+                    ).length
+                    : 0
+            };
+            const disclosure = {
+                height: expandBox?.height || 0,
+                sharesCodeSurface: Boolean(expand
+                    && getComputedStyle(expand).backgroundColor === getComputedStyle(block?.querySelector('pre')).backgroundColor),
+                direction: expand ? getComputedStyle(expand, '::after').content : ''
+            };
             expand?.click();
             wrap?.click();
             return {
                 before,
+                anonymous,
+                disclosure,
                 expanded: expand?.getAttribute('aria-expanded') === 'true'
                     && !block?.classList.contains('shell-code-block--collapsed'),
                 wrapped: block?.classList.contains('shell-code-block--wrapped') || false,
@@ -1137,12 +1198,27 @@ async function inspectPremiumReadingTools() {
                 && codeTools.before.toolbarControls === 3
                 && codeTools.before.controls === 4
                 && codeTools.before.wrapPressed === 'false'
+                && codeTools.anonymous.marked
+                && codeTools.anonymous.collapsed
+                && codeTools.anonymous.filename === ''
+                && !codeTools.anonymous.identityPresent
+                && codeTools.anonymous.toolbarLabels.join(',') === 'Wrap,Copy'
+                && codeTools.anonymous.toolbarControls === 2
+                && codeTools.anonymous.toolbarPosition === 'absolute'
+                && codeTools.anonymous.toolbarSharesCodeSurface
+                && codeTools.anonymous.firstLineClearsToolbar
+                && codeTools.anonymous.lineNumbersAligned
+                && codeTools.anonymous.visibleLineNumbers === 16
+                && codeTools.anonymous.paintedLineNumbers === 16
+                && codeTools.disclosure.height <= 36
+                && codeTools.disclosure.sharesCodeSurface
+                && /[↓⇣]/.test(codeTools.disclosure.direction)
                 && codeTools.expanded
                 && codeTools.wrapped
                 && codeTools.wrapPressed === 'true'
                 && codeTools.lineNumbersHidden
                 && codeTools.storedWrap === 'wrap',
-            'long code blocks gain persistent wrapping, download, copy, and honest expand controls',
+            'code tools stay compact without filenames and long listings use a clear disclosure',
             JSON.stringify(codeTools)
         );
 
@@ -1175,6 +1251,9 @@ async function inspectPremiumReadingTools() {
             dialog?.close();
             return {
                 triggerVisible: Boolean(trigger && !trigger.hidden),
+                triggerLabel: trigger?.textContent.replace(/\\s+/g, ' ').trim() || '',
+                triggerAriaLabel: trigger?.getAttribute('aria-label') || '',
+                triggerWidth: trigger?.getBoundingClientRect().width || 0,
                 opened: dialog?.open || false,
                 minimumTarget: touchTargets.length
                     ? Math.min(...touchTargets.map((box) => Math.min(box.width, box.height)))
@@ -1185,6 +1264,9 @@ async function inspectPremiumReadingTools() {
         })()`);
         check(
             readerTools.triggerVisible
+                && /Reader/i.test(readerTools.triggerLabel)
+                && /^Open reading controls$/i.test(readerTools.triggerAriaLabel)
+                && readerTools.triggerWidth >= 80
                 && readerTools.minimumTarget >= 32
                 && readerTools.applied.text === 'large'
                 && readerTools.applied.measure === 'wide'

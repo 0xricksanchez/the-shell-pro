@@ -203,7 +203,8 @@
             code.dataset.shellLanguage = language;
 
             var wrapper = doc.createElement('div');
-            wrapper.className = 'shell-code-block';
+            wrapper.className = 'shell-code-block '
+                + (file ? 'shell-code-block--identified' : 'shell-code-block--anonymous');
             wrapper.dataset.filename = file;
             wrapper.dataset.language = language;
             pre.parentNode.insertBefore(wrapper, pre);
@@ -211,18 +212,19 @@
 
             var toolbar = doc.createElement('div');
             toolbar.className = 'shell-code-toolbar';
-            var identity = doc.createElement('span');
-            identity.className = 'shell-code-toolbar__identity';
             if (file) {
+                var identity = doc.createElement('span');
+                identity.className = 'shell-code-toolbar__identity';
                 var filename = doc.createElement('span');
                 filename.className = 'shell-code-toolbar__file';
                 filename.textContent = file;
                 identity.appendChild(filename);
+                var label = doc.createElement('span');
+                label.className = 'shell-code-toolbar__language';
+                label.textContent = languageName(language);
+                identity.appendChild(label);
+                toolbar.appendChild(identity);
             }
-            var label = doc.createElement('span');
-            label.className = 'shell-code-toolbar__language';
-            label.textContent = languageName(language);
-            identity.appendChild(label);
 
             var actions = doc.createElement('span');
             actions.className = 'shell-code-toolbar__actions';
@@ -263,7 +265,7 @@
             });
             actions.appendChild(copy);
 
-            toolbar.append(identity, actions);
+            toolbar.appendChild(actions);
             wrapper.insertBefore(toolbar, pre);
             var lineCount = addLineNumbers(wrapper, code);
 
