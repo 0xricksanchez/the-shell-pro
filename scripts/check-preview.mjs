@@ -89,7 +89,6 @@ class CdpClient {
         this.socket = socket;
         this.nextId = 1;
         this.pending = new Map();
-        this.listeners = new Map();
         socket.addEventListener('message', (event) => {
             const message = JSON.parse(event.data);
             if (message.id) {
@@ -103,8 +102,6 @@ class CdpClient {
                 }
                 return;
             }
-            const listeners = this.listeners.get(message.method) || [];
-            listeners.forEach((listener) => listener(message.params));
         });
     }
 
@@ -116,22 +113,6 @@ class CdpClient {
         });
     }
 
-    waitFor(method, timeoutMs = 10_000) {
-        return new Promise((resolve, reject) => {
-            const listeners = this.listeners.get(method) || [];
-            const timeout = setTimeout(() => {
-                this.listeners.set(method, listeners.filter((item) => item !== listener));
-                reject(new Error(`Timed out waiting for ${method}`));
-            }, timeoutMs);
-            const listener = (params) => {
-                clearTimeout(timeout);
-                this.listeners.set(method, listeners.filter((item) => item !== listener));
-                resolve(params);
-            };
-            listeners.push(listener);
-            this.listeners.set(method, listeners);
-        });
-    }
 }
 
 async function launchBrowser() {
@@ -170,9 +151,32 @@ async function navigate(path, width = 1440, height = 1000) {
         deviceScaleFactor: 1,
         mobile: width <= 700
     });
-    const loaded = client.waitFor('Page.loadEventFired', 20_000);
-    await client.send('Page.navigate', {url: new URL(path, baseUrl).href});
-    await loaded;
+    const target = new URL(path, baseUrl);
+    const navigation = await client.send('Page.navigate', {url: target.href});
+    if (navigation.errorText) {
+        throw new Error(`Could not navigate to ${target.href}: ${navigation.errorText}`);
+    }
+    const deadline = Date.now() + 20_000;
+    var ready = false;
+    while (Date.now() < deadline) {
+        try {
+            const result = await client.send('Runtime.evaluate', {
+                expression: `({href: window.location.href, readyState: document.readyState})`,
+                returnByValue: true
+            });
+            const state = result.result?.value;
+            ready = state
+                && new URL(state.href).pathname === target.pathname
+                && /^(?:interactive|complete)$/.test(state.readyState);
+            if (ready) break;
+        } catch {
+            // The previous execution context disappears while navigation commits.
+        }
+        await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    if (!ready) {
+        throw new Error(`Timed out waiting for ${target.href} to become interactive`);
+    }
     await new Promise((resolve) => setTimeout(resolve, 250));
 }
 
@@ -689,6 +693,277 @@ async function inspectResponsiveBoundaries() {
     );
 }
 
+async function inspectResponsiveCodeTypography() {
+    const samples = [];
+    for (const width of [390, 600, 1440]) {
+        await navigate('/tracing-the-edge-200ms-feedback-loop/', width, 844);
+        samples.push(await evaluate(`(() => {
+            const article = document.querySelector('.article-content');
+            const code = document.querySelector('.shell-code-block pre');
+            const lineNumbers = document.querySelector('.code-line-numbers');
+            const pixels = (element) => element ? Number.parseFloat(getComputedStyle(element).fontSize) : 0;
+            return {
+                width: window.innerWidth,
+                article: pixels(article),
+                code: pixels(code),
+                lineNumbers: pixels(lineNumbers)
+            };
+        })()`));
+    }
+    const [phone, mobile, desktop] = samples;
+    check(
+        phone.code === phone.lineNumbers
+            && mobile.code === mobile.lineNumbers
+            && phone.code <= mobile.code
+            && mobile.code < desktop.code
+            && mobile.code / mobile.article <= .8,
+        'code typography scales with mobile prose and keeps line numbers aligned',
+        JSON.stringify(samples)
+    );
+}
+
+async function inspectRuntimeStability() {
+    const injection = await client.send('Page.addScriptToEvaluateOnNewDocument', {
+        source: `
+            window.__previewRuntimeErrors = [];
+            window.addEventListener('error', (event) => {
+                if (event.target !== window && !event.error) return;
+                window.__previewRuntimeErrors.push(event.error?.stack || event.message || 'Unknown runtime error');
+            });
+            window.addEventListener('unhandledrejection', (event) => {
+                window.__previewRuntimeErrors.push(String(event.reason?.stack || event.reason || 'Unhandled rejection'));
+            });
+        `
+    });
+    const runtimeFailures = [];
+    try {
+        for (const path of ['/', '/tracing-the-edge-200ms-feedback-loop/', '/topics/', '/archives/', '/definitely-not-a-preview-route/']) {
+            await navigate(path, 390, 844);
+            const errors = await evaluate(`(async () => {
+                await new Promise((resolve) => setTimeout(resolve, 350));
+                return window.__previewRuntimeErrors || [];
+            })()`);
+            if (errors.length) {
+                runtimeFailures.push({path, errors});
+            }
+        }
+    } finally {
+        await client.send('Page.removeScriptToEvaluateOnNewDocument', {identifier: injection.identifier});
+    }
+    check(
+        runtimeFailures.length === 0,
+        'primary routes produce no runtime errors or unhandled rejections on mobile',
+        JSON.stringify(runtimeFailures)
+    );
+    await navigate('/');
+}
+
+async function inspectNoScriptFallback() {
+    let state = {};
+    await client.send('Emulation.setScriptExecutionDisabled', {value: true});
+    try {
+        await navigate('/tracing-the-edge-200ms-feedback-loop/', 390, 844);
+    } finally {
+        await client.send('Emulation.setScriptExecutionDisabled', {value: false});
+    }
+    state = await evaluate(`(() => {
+        const menu = document.querySelector('[data-menu]');
+        const toggle = document.querySelector('[data-menu-toggle]');
+        const code = document.querySelector('[data-post-content] pre code');
+        return {
+            menuDisplay: menu ? getComputedStyle(menu).display : 'none',
+            toggleDisplay: toggle ? getComputedStyle(toggle).display : 'none',
+            articleReadable: Boolean(document.querySelector('[data-post-content]')?.textContent.trim()),
+            codeReadable: Boolean(code?.textContent.trim())
+        };
+    })()`);
+    check(
+        state.menuDisplay !== 'none'
+            && state.toggleDisplay === 'none'
+            && state.articleReadable
+            && state.codeReadable,
+        'mobile navigation and technical content remain available without JavaScript',
+        JSON.stringify(state)
+    );
+    await navigate('/');
+}
+
+async function inspectMobileInteractionStress() {
+    await navigate('/', 390, 320);
+    const navigation = await evaluate(`(() => {
+        const menu = document.querySelector('[data-menu]');
+        const list = menu?.querySelector('ul');
+        const template = list?.querySelector('li');
+        for (let index = 0; index < 12 && template; index += 1) {
+            const clone = template.cloneNode(true);
+            clone.querySelector('a').textContent = 'Additional navigation item ' + (index + 1);
+            list.appendChild(clone);
+        }
+        document.querySelector('[data-menu-toggle]')?.click();
+        const box = menu?.getBoundingClientRect();
+        const style = menu && getComputedStyle(menu);
+        return {
+            open: menu?.classList.contains('is-open') || false,
+            top: box?.top ?? -1,
+            bottom: box?.bottom ?? -1,
+            viewportHeight: window.innerHeight,
+            scrollable: Boolean(menu && menu.scrollHeight > menu.clientHeight),
+            overflowY: style?.overflowY || '',
+            horizontalOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth
+        };
+    })()`);
+    check(
+        navigation.open
+            && navigation.top >= 0
+            && navigation.bottom <= navigation.viewportHeight + 1
+            && navigation.scrollable
+            && /^(?:auto|scroll)$/.test(navigation.overflowY)
+            && navigation.horizontalOverflow === 0,
+        'an overfilled mobile menu stays inside a short landscape viewport and scrolls internally',
+        JSON.stringify(navigation)
+    );
+
+    await navigate('/tracing-the-edge-200ms-feedback-loop/', 390, 500);
+    const toc = await evaluate(`(() => {
+        const toggle = document.querySelector('.toc__toggle');
+        const toc = document.querySelector('[data-toc]');
+        toggle?.click();
+        toc?.querySelector('a')?.focus();
+        document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true}));
+        const escapeClosed = toggle?.getAttribute('aria-expanded') === 'false';
+        const escapeReturnedFocus = document.activeElement === toggle;
+        if (toggle?.getAttribute('aria-expanded') === 'true') {
+            toggle.click();
+        }
+        toggle?.click();
+        document.querySelector('main')?.dispatchEvent(new MouseEvent('click', {bubbles: true}));
+        return {
+            escapeClosed,
+            escapeReturnedFocus,
+            outsideClickClosed: toggle?.getAttribute('aria-expanded') === 'false'
+        };
+    })()`);
+    check(
+        toc.escapeClosed && toc.escapeReturnedFocus && toc.outsideClickClosed,
+        'mobile TOC closes predictably on Escape and outside interaction',
+        JSON.stringify(toc)
+    );
+
+    await navigate('/tracing-the-edge-200ms-feedback-loop/', 390, 320);
+    const openedLightbox = await evaluate(`(() => {
+        const thumbnail = document.querySelector('[data-post-content] img.is-zoomable');
+        thumbnail?.focus();
+        thumbnail?.click();
+        const dialog = document.querySelector('.image-lightbox');
+        const box = dialog?.getBoundingClientRect();
+        const controls = Array.from(dialog?.querySelectorAll('a, button') || [])
+            .map((control) => control.getBoundingClientRect())
+            .filter((box) => box.width > 0 && box.height > 0);
+        return {
+            open: dialog?.open || false,
+            inViewport: Boolean(box
+                && box.top >= -1
+                && box.left >= -1
+                && box.right <= window.innerWidth + 1
+                && box.bottom <= window.innerHeight + 1),
+            minimumControlSize: controls.length
+                ? Math.min(...controls.map((box) => Math.min(box.width, box.height)))
+                : 0
+        };
+    })()`);
+    const closedLightbox = await evaluate(`(async () => {
+        document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', {
+            key: 'Escape',
+            bubbles: true,
+            cancelable: true
+        }));
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        return {
+            open: document.querySelector('.image-lightbox')?.open || false,
+            focusReturned: document.activeElement === document.querySelector('[data-post-content] img.is-zoomable')
+        };
+    })()`);
+    check(
+        openedLightbox.open
+            && openedLightbox.inViewport
+            && openedLightbox.minimumControlSize >= 32
+            && !closedLightbox.open
+            && closedLightbox.focusReturned,
+        'image lightbox fits a landscape phone, closes on Escape, and restores focus',
+        JSON.stringify({openedLightbox, closedLightbox})
+    );
+    await navigate('/');
+}
+
+async function inspectTechnicalContentStress() {
+    const injection = await client.send('Page.addScriptToEvaluateOnNewDocument', {
+        source: `
+            document.addEventListener('DOMContentLoaded', () => {
+                const content = document.querySelector('[data-post-content]');
+                if (!content) return;
+                const heading = document.createElement('h5');
+                heading.dataset.qualitySweep = 'long-heading';
+                heading.textContent = 'packet_budget_' + 'x'.repeat(120);
+                const pre = document.createElement('pre');
+                const code = document.createElement('code');
+                code.className = 'language-shell';
+                code.textContent = '// file: probes/' + 'nested/'.repeat(18) + 'capture-budget.sh\\n'
+                    + 'printf "%s\\\\n" "' + '0123456789abcdef'.repeat(16) + '"';
+                pre.dataset.qualitySweep = 'long-code';
+                pre.appendChild(code);
+                content.prepend(heading, pre);
+            }, {once: true});
+        `
+    });
+    try {
+        await navigate('/tracing-the-edge-200ms-feedback-loop/', 320, 600);
+        const state = await evaluate(`(async () => {
+            await new Promise((resolve) => setTimeout(resolve, 150));
+            document.querySelector('.toc__toggle')?.click();
+            const block = document.querySelector('[data-quality-sweep="long-code"]')?.closest('.shell-code-block');
+            const pre = block?.querySelector('pre');
+            const toolbar = block?.querySelector('.shell-code-toolbar');
+            const filename = block?.querySelector('.shell-code-toolbar__file');
+            const copy = block?.querySelector('.copy-code');
+            const headingLink = Array.from(document.querySelectorAll('[data-toc] a'))
+                .find((link) => link.textContent.startsWith('packet_budget_'));
+            const blockBox = block?.getBoundingClientRect();
+            const toolbarBox = toolbar?.getBoundingClientRect();
+            const copyBox = copy?.getBoundingClientRect();
+            return {
+                pageOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+                blockInsideViewport: Boolean(blockBox && blockBox.left >= 0 && blockBox.right <= window.innerWidth),
+                codeScrolls: Boolean(pre && pre.scrollWidth > pre.clientWidth),
+                filenameClips: Boolean(filename
+                    && filename.scrollWidth > filename.clientWidth
+                    && getComputedStyle(filename).textOverflow === 'ellipsis'),
+                copyInsideToolbar: Boolean(toolbarBox && copyBox
+                    && copyBox.left >= toolbarBox.left
+                    && copyBox.right <= toolbarBox.right),
+                tocHeadingWraps: Boolean(headingLink && headingLink.scrollWidth <= headingLink.clientWidth + 1),
+                minimumControlSize: Math.min(
+                    copyBox ? Math.min(copyBox.width, copyBox.height) : 0,
+                    document.querySelector('.toc__toggle')?.getBoundingClientRect().height || 0
+                )
+            };
+        })()`);
+        check(
+            state.pageOverflow === 0
+                && state.blockInsideViewport
+                && state.codeScrolls
+                && state.filenameClips
+                && state.copyInsideToolbar
+                && state.tocHeadingWraps
+                && state.minimumControlSize >= 32,
+            'long filenames, code lines, and technical headings stay contained and operable at 320 px',
+            JSON.stringify(state)
+        );
+    } finally {
+        await client.send('Page.removeScriptToEvaluateOnNewDocument', {identifier: injection.identifier});
+    }
+    await navigate('/');
+}
+
 async function inspectErrorPage() {
     await navigate('/definitely-not-a-preview-route/');
     const state = await evaluate(`(() => ({
@@ -768,18 +1043,25 @@ async function inspectLongArticle() {
 
     const anchorState = await evaluate(`(async () => {
         const link = document.querySelector('[data-toc] a[href="#build-the-smallest-useful-probe"]');
-        link?.click();
-        await new Promise((resolve) => setTimeout(resolve, 900));
         const target = document.querySelector('#build-the-smallest-useful-probe');
+        link?.click();
+        const deadline = performance.now() + 2000;
+        while (target && performance.now() < deadline) {
+            const top = target.getBoundingClientRect().top;
+            if (top >= 78 && top <= 110) break;
+            await new Promise((resolve) => setTimeout(resolve, 25));
+        }
         const current = document.querySelectorAll('[data-toc] a[aria-current="location"]');
         return {
+            linkFound: Boolean(link),
             targetTop: target?.getBoundingClientRect().top ?? -1,
             activeCount: current.length,
             activeHref: current[0]?.getAttribute('href') || ''
         };
     })()`);
     check(
-        anchorState.targetTop >= 78
+        anchorState.linkFound
+            && anchorState.targetTop >= 78
             && anchorState.targetTop <= 110
             && anchorState.activeCount === 1
             && anchorState.activeHref === '#build-the-smallest-useful-probe',
@@ -993,6 +1275,11 @@ async function main() {
     await inspectHighlighterFailureFallback();
     await inspectAccessibilityTree();
     await inspectResponsiveBoundaries();
+    await inspectResponsiveCodeTypography();
+    await inspectRuntimeStability();
+    await inspectNoScriptFallback();
+    await inspectMobileInteractionStress();
+    await inspectTechnicalContentStress();
     await inspectErrorPage();
     await inspectLongArticle();
     await inspectFooter();

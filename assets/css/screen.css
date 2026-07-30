@@ -1233,7 +1233,7 @@ button:focus-visible,
     color: #d6e0eb;
     background: #0b1118;
     font-family: var(--shell-mono);
-    font-size: .82rem;
+    font-size: clamp(.75rem, calc(.63rem + .35vw), .82rem);
     line-height: 1.68;
     tab-size: 4;
 }
@@ -1263,7 +1263,7 @@ button:focus-visible,
     border-right: 1px solid #27394d;
     color: #61778e;
     font-family: var(--shell-mono);
-    font-size: .82rem;
+    font-size: clamp(.75rem, calc(.63rem + .35vw), .82rem);
     line-height: 1.68;
     list-style: none;
     text-align: right;
@@ -1540,6 +1540,7 @@ button:focus-visible,
     position: sticky;
     top: 6rem;
     max-height: calc(100vh - 7.5rem);
+    max-height: calc(100dvh - 7.5rem);
     padding: .85rem 0 .85rem .95rem;
     overflow: auto;
     border-left: 1px solid var(--shell-border);
@@ -1596,6 +1597,7 @@ button:focus-visible,
     color: var(--shell-muted);
     font-size: .71rem;
     line-height: 1.45;
+    overflow-wrap: anywhere;
     text-decoration: none;
     transition: color 140ms ease, background-color 140ms ease;
 }
@@ -2256,6 +2258,7 @@ button:focus-visible,
     width: min(96vw, 92rem);
     max-width: none;
     max-height: 94vh;
+    max-height: 94dvh;
     padding: 3.65rem 1rem 1rem;
     overflow: visible;
     border: 1px solid var(--shell-border);
@@ -2272,6 +2275,7 @@ button:focus-visible,
 .image-lightbox img {
     max-width: 100%;
     max-height: calc(94vh - 4.5rem);
+    max-height: calc(94dvh - 4.5rem);
     margin: 0 auto;
     object-fit: contain;
 }
@@ -2387,6 +2391,7 @@ button:focus-visible,
     .toc.toc--collapsible.toc--expanded .toc__list {
         display: block;
         max-height: calc(100vh - 9.5rem);
+        max-height: calc(100dvh - 9.5rem);
         overflow: auto;
     }
 
@@ -2424,10 +2429,14 @@ button:focus-visible,
         right: 1rem;
         left: 1rem;
         display: none;
+        max-height: calc(100vh - 3.35rem);
+        max-height: calc(100dvh - 3.35rem);
         padding: .5rem;
+        overflow-y: auto;
         border: 1px solid var(--shell-border);
         background: #141e2a;
         box-shadow: var(--shell-shadow);
+        overscroll-behavior: contain;
     }
 
     .site-nav__menu.is-open {
@@ -2601,7 +2610,6 @@ button:focus-visible,
     .article-content pre,
     .shell-code-block pre {
         padding: 1rem;
-        font-size: .75rem;
     }
 
     .shell-code-block--numbered pre {
@@ -2611,7 +2619,6 @@ button:focus-visible,
     .code-line-numbers {
         padding-right: .45rem;
         padding-left: .35rem;
-        font-size: .75rem;
     }
 
     .shell-code-block--numbered {

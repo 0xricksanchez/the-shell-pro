@@ -420,6 +420,21 @@
                 setTocExpanded(false);
             }
         });
+        doc.addEventListener('click', function (event) {
+            if (window.matchMedia('(max-width: 900px)').matches
+                && toc.classList.contains('toc--expanded')
+                && !toc.contains(event.target)) {
+                setTocExpanded(false);
+            }
+        });
+        doc.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape'
+                && window.matchMedia('(max-width: 900px)').matches
+                && toc.classList.contains('toc--expanded')) {
+                setTocExpanded(false);
+                toggle.focus();
+            }
+        });
         count.insertAdjacentElement('afterend', toggle);
 
         var activeHeadingFrame;
@@ -561,6 +576,7 @@
         close.textContent = 'Close';
         close.setAttribute('aria-label', 'Close enlarged image');
         var image = doc.createElement('img');
+        var opener;
         controls.append(original, close);
         dialog.append(controls, image);
         doc.body.appendChild(dialog);
@@ -569,6 +585,19 @@
             if (event.target === dialog) {
                 dialog.close();
             }
+        });
+        dialog.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape' && dialog.open) {
+                event.preventDefault();
+                dialog.close();
+            }
+        });
+        dialog.addEventListener('close', function () {
+            image.removeAttribute('src');
+            if (opener && opener.isConnected) {
+                opener.focus();
+            }
+            opener = null;
         });
 
         content.querySelectorAll('img').forEach(function (thumbnail) {
@@ -583,6 +612,7 @@
             thumbnail.setAttribute('role', 'button');
             thumbnail.setAttribute('aria-label', 'Enlarge image' + (thumbnail.alt ? ': ' + thumbnail.alt : ''));
             var open = function () {
+                opener = thumbnail;
                 var originalUrl = new URL(thumbnail.getAttribute('src') || thumbnail.src, doc.baseURI).href;
                 image.src = originalUrl;
                 image.alt = thumbnail.alt || '';
