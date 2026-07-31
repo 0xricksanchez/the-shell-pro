@@ -68,3 +68,6 @@ docs/**
 # Release artifacts and local scratch notes stay out of the repo
 the-shell-pro-*.zip
 .scratch/
+
+# Visual brainstorm companion sessions
+.superpowers/
