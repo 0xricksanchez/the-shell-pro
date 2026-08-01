@@ -1279,6 +1279,7 @@ body.reader-focus .reader-tools__trigger {
     grid-column: 1;
     color: #c4ceda;
     font-size: clamp(1.0625rem, 1.3vw, 1.15rem);
+    line-height: 1.65;
     overflow-wrap: break-word;
 }
 
