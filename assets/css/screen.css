@@ -985,15 +985,15 @@ button:focus-visible,
 }
 
 .article {
-    --reader-measure: 740px;
+    --reader-measure: 630px;
 }
 
 .article[data-reader-measure="focused"] {
-    --reader-measure: 680px;
+    --reader-measure: 575px;
 }
 
 .article[data-reader-measure="wide"] {
-    --reader-measure: 820px;
+    --reader-measure: 700px;
 }
 
 .article-header {
@@ -1332,7 +1332,7 @@ body.reader-focus .reader-tools__trigger {
     grid-column: 1;
     color: #c4ceda;
     font-size: clamp(1.0625rem, 1.3vw, 1.15rem);
-    line-height: 1.65;
+    line-height: 1.75;
     overflow-wrap: break-word;
 }
 
