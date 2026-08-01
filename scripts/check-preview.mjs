@@ -829,6 +829,48 @@ async function inspectTypeRoles() {
     );
 }
 
+async function inspectPalette() {
+    await navigate('/tracing-the-edge-200ms-feedback-loop/');
+    const contrast = (hex, bg) => {
+        const lum = (h) => {
+            const c = h.replace('#', '').match(/../g).map((v) => {
+                const n = parseInt(v, 16) / 255;
+                return n <= 0.03928 ? n / 12.92 : Math.pow((n + 0.055) / 1.055, 2.4);
+            });
+            return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+        };
+        const [a, b] = [lum(hex), lum(bg)].sort((x, y) => y - x);
+        return (a + 0.05) / (b + 0.05);
+    };
+    const accents = ['#35e0a1', '#dc4474', '#57b6ff', '#ff9448'];
+    const bg = await evaluate(`getComputedStyle(document.body).backgroundColor`);
+    const toHex = (rgb) => '#' + rgb.match(/\d+/g).slice(0, 3)
+        .map((n) => Number(n).toString(16).padStart(2, '0')).join('');
+    const bgHex = toHex(bg);
+    const failing = accents.filter((a) => contrast(a, bgHex) < 4.5);
+    check(
+        failing.length === 0,
+        'every supported accent clears WCAG AA against the article background',
+        JSON.stringify({background: bgHex, failing,
+            ratios: accents.map((a) => [a, contrast(a, bgHex).toFixed(2)])})
+    );
+
+    const literals = await evaluate(`(() => {
+        const sheet = [...document.styleSheets]
+            .find((s) => String(s.href).includes('screen.css'));
+        const text = [...sheet.cssRules].map((r) => r.cssText).join('\\n');
+        return {
+            green: (text.match(/53,\\s*224,\\s*161/g) || []).length,
+            mint: (text.match(/#63f0ba|#b8f6db/gi) || []).length
+        };
+    })()`);
+    check(
+        literals.green === 0 && literals.mint === 0,
+        'no hard-coded accent literals survive in the stylesheet',
+        JSON.stringify(literals)
+    );
+}
+
 async function inspectAccessibilityTree() {
     await navigate('/tracing-the-edge-200ms-feedback-loop/');
     const tree = await client.send('Accessibility.getFullAXTree');
@@ -2018,6 +2060,7 @@ async function main() {
     await inspectUntypedCodeLabel();
     await inspectHighlighterFailureFallback();
     await inspectTypeRoles();
+    await inspectPalette();
     await inspectAccessibilityTree();
     await inspectResponsiveBoundaries();
     await inspectResponsiveCodeTypography();

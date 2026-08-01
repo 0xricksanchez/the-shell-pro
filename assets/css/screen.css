@@ -1,16 +1,32 @@
 :root {
-    --shell-bg: #111822;
-    --shell-surface: #18222f;
-    --shell-surface-raised: #202d3d;
+    /* Structural — fixed. Background ramp, surfaces, borders, text. */
+    --shell-bg: #080c13;
+    --shell-surface: #131c27;
+    --shell-surface-raised: #1b2634;
     --shell-text: #d5dce7;
     --shell-muted: #8492a5;
-    --shell-border: #304257;
+    --shell-border: #2a3a4d;
     --shell-border-strong: #4a6076;
+
+    /* Brand — author-settable via Ghost. Never used to encode meaning. */
     --shell-accent: #35e0a1;
-    --shell-cyan: #7dd3fc;
-    --shell-magenta: #e697ff;
-    --shell-yellow: #facc6b;
+
+    /*
+     * Semantic — theme-owned, fixed, never derived from the accent.
+     * These encode what kind of claim a research block makes; tying them to
+     * branding would let an accent change corrupt the encoding.
+     * See docs/adr/0002-brand-colour-and-semantic-colour-are-separate.md
+     */
+    --shell-tone-hypothesis: #7dd3fc;
+    --shell-tone-method: #6ee7b7;
+    --shell-tone-finding: #e697ff;
+    --shell-tone-limitation: #facc6b;
     --shell-danger: #ff7b88;
+
+    --shell-cyan: var(--shell-tone-hypothesis);
+    --shell-magenta: var(--shell-tone-finding);
+    --shell-yellow: var(--shell-tone-limitation);
+
     --shell-shadow: 0 18px 60px rgba(0, 0, 0, .28);
     --shell-mono: ui-monospace, "Cascadia Code", "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
     /*
@@ -198,7 +214,7 @@ button:focus-visible,
     width: 100%;
     height: 100%;
     background: linear-gradient(90deg, var(--shell-accent), var(--shell-cyan));
-    box-shadow: 0 0 .75rem rgba(53, 224, 161, .72);
+    box-shadow: 0 0 .75rem color-mix(in srgb, var(--shell-accent) 72%, transparent);
     transform: scaleX(0);
     transform-origin: left center;
 }
@@ -306,7 +322,7 @@ button:focus-visible,
 .site-nav__menu .nav-current a {
     border-color: color-mix(in srgb, var(--shell-accent) 45%, transparent);
     color: var(--shell-accent);
-    background: rgba(53, 224, 161, .08);
+    background: color-mix(in srgb, var(--shell-accent) 8%, transparent);
 }
 
 .site-nav__menu .nav-external a::after {
@@ -604,7 +620,7 @@ button:focus-visible,
 .lab-index__tags a:hover {
     border-color: var(--shell-accent);
     color: var(--shell-accent);
-    background: rgba(53, 224, 161, .06);
+    background: color-mix(in srgb, var(--shell-accent) 6%, transparent);
 }
 
 .lab-index__tags span {
@@ -745,7 +761,7 @@ button:focus-visible,
 
 .home-feed .post-card:hover {
     border-color: var(--shell-border);
-    background: linear-gradient(90deg, rgba(53, 224, 161, .06), transparent 56%);
+    background: linear-gradient(90deg, color-mix(in srgb, var(--shell-accent) 6%, transparent), transparent 56%);
     box-shadow: none;
     transform: none;
 }
@@ -862,7 +878,7 @@ button:focus-visible,
 
 .post-type--field {
     color: var(--shell-accent);
-    background: rgba(53, 224, 161, .055);
+    background: color-mix(in srgb, var(--shell-accent) 5.5%, transparent);
 }
 
 .post-type--deep {
@@ -1189,7 +1205,7 @@ button:focus-visible,
 }
 
 .article[data-reader-contrast="high"] .article-content a {
-    color: #63f0ba;
+    color: color-mix(in srgb, var(--shell-accent) 78%, #ffffff);
     text-decoration-thickness: .11em;
 }
 
@@ -1427,18 +1443,21 @@ body.reader-focus .reader-tools__trigger {
     --research-tone: var(--shell-cyan);
 }
 
-.research-block--hypothesis,
+.research-block--hypothesis {
+    --research-tone: var(--shell-tone-hypothesis);
+}
+
 .research-block--method {
-    --research-tone: var(--shell-accent);
+    --research-tone: var(--shell-tone-method);
 }
 
 .research-block--finding {
-    --research-tone: var(--shell-magenta);
+    --research-tone: var(--shell-tone-finding);
 }
 
 .research-block--limitation,
 .research-block--safety {
-    --research-tone: var(--shell-yellow);
+    --research-tone: var(--shell-tone-limitation);
 }
 
 .research-section {
@@ -1569,7 +1588,7 @@ body.reader-focus .reader-tools__trigger {
 .shell-code-action:hover {
     border-color: var(--shell-accent);
     color: var(--shell-accent);
-    background: rgba(53, 224, 161, .11);
+    background: color-mix(in srgb, var(--shell-accent) 11%, transparent);
 }
 
 /* A pressed toggle is a state, not a hover, so it gets its own border and fill
@@ -2373,7 +2392,7 @@ body.reader-focus .reader-tools__trigger {
 .article-action:hover {
     border-color: var(--shell-accent);
     color: var(--shell-accent);
-    background: rgba(53, 224, 161, .06);
+    background: color-mix(in srgb, var(--shell-accent) 6%, transparent);
 }
 
 .article-actions__tags {
@@ -2547,7 +2566,7 @@ body.reader-focus .reader-tools__trigger {
 .related-post:hover {
     border-color: var(--shell-accent);
     color: var(--shell-text);
-    background: rgba(53, 224, 161, .06);
+    background: color-mix(in srgb, var(--shell-accent) 6%, transparent);
 }
 
 .related-post > span {
@@ -2595,7 +2614,7 @@ body.reader-focus .reader-tools__trigger {
 
 .topic-card:hover {
     color: var(--shell-text);
-    background: linear-gradient(135deg, rgba(53, 224, 161, .1), transparent 68%);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--shell-accent) 10%, transparent), transparent 68%);
 }
 
 .topic-card__count {
