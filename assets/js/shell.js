@@ -584,6 +584,10 @@
     }
 
     function enhanceSeriesNavigation() {
+        // The header status strip mirrors whichever series this post turns out
+        // to belong to. A post can only belong to one #series- tag in practice,
+        // so the last iteration below wins; there is nothing to disambiguate.
+        var headerPart = doc.querySelector('[data-series-part]');
         doc.querySelectorAll('.article-series').forEach(function (series) {
             var heading = series.querySelector('h2');
             var links = Array.from(series.querySelectorAll('ol a'));
@@ -603,6 +607,11 @@
             status.className = 'article-series__status';
             status.textContent = 'Part ' + (currentIndex + 1) + ' of ' + links.length;
             heading.insertAdjacentElement('afterend', status);
+
+            if (headerPart) {
+                headerPart.textContent = 'Part ' + (currentIndex + 1) + ' / ' + links.length;
+                headerPart.hidden = false;
+            }
         });
     }
 

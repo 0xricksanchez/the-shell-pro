@@ -6,7 +6,14 @@
         <header class="article-header">
             <div class="article-header__content">
                 {{> "breadcrumbs" current=title}}
-                {{> "reader-tools"}}
+                <div class="article-header__actions">
+                    {{! Populated by enhanceSeriesNavigation() in shell.js from the
+                        same series data as the .article-series box below — real
+                        part/total, not a placeholder. Stays hidden for posts
+                        outside a series. }}
+                    <p class="article-header__series-part" data-series-part hidden></p>
+                    {{> "reader-tools"}}
+                </div>
                 {{> "post-type"}}
                 <p class="eyebrow">{{#primary_tag}}<a href="{{url}}">// {{name}}</a>{{else}}// field note{{/primary_tag}}</p>
                 <h1>{{title}}</h1>

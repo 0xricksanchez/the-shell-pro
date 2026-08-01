@@ -1049,15 +1049,58 @@ button:focus-visible,
     margin: 0 auto;
 }
 
+/*
+ * Reserves room for the .article-header__actions cluster (status strip +
+ * Reader trigger), which is absolutely positioned and so claims no space of
+ * its own. flex-wrap on the breadcrumb list means every wrapped line — not
+ * just the first — keeps this margin clear, so a long breadcrumb trail never
+ * runs underneath the cluster.
+ */
 .article-header__content > .breadcrumbs {
-    padding-right: 7rem;
+    padding-right: 11.5rem;
+}
+
+/*
+ * The breadcrumb row's right-aligned strip: the series part index (real
+ * content, added once the theme has somewhere to put it) sitting beside the
+ * Reader trigger. One absolutely positioned flex row rather than positioning
+ * each child separately, so the pair moves as a unit and the trigger's own
+ * top/right geometry, unchanged from before this cluster existed, lives in
+ * one place.
+ *
+ * Deliberately no z-index here. position: absolute with an auto z-index still
+ * paints after the breadcrumbs' static text without opening a new stacking
+ * context — a z-index value would open one, and then trap the Reader trigger
+ * inside it. In reader-focus mode the trigger becomes position: fixed with its
+ * own z-index: 45 so it can float above .site-header (z-index: 30); a
+ * stacking context on this wrapper would cap that at this wrapper's own
+ * z-index instead, however high the trigger's tried to go, and the trigger
+ * would render behind the header.
+ */
+.article-header__actions {
+    position: absolute;
+    top: -.28rem;
+    right: 0;
+    display: flex;
+    align-items: center;
+    gap: .55rem;
+}
+
+/*
+ * "PART 1 / 2" is a count, not a label — CONTEXT.md classes counts parsed —
+ * so it borrows .toc__count's treatment rather than the display face used for
+ * scanned interface hints elsewhere in this row.
+ */
+.article-header__series-part {
+    color: var(--shell-muted);
+    font-family: var(--shell-mono);
+    font-size: .62rem;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    white-space: nowrap;
 }
 
 .reader-tools__trigger {
-    position: absolute;
-    z-index: 2;
-    top: -.28rem;
-    right: 0;
     display: inline-flex;
     width: auto;
     min-width: 5.5rem;
