@@ -1209,7 +1209,8 @@ button:focus-visible,
 /* Structure needs to survive too, not just prose. */
 .article[data-reader-contrast="high"] .shell-code-block,
 .article[data-reader-contrast="high"] .article-content figure,
-.article[data-reader-contrast="high"] .article-content table {
+.article[data-reader-contrast="high"] .article-content th,
+.article[data-reader-contrast="high"] .article-content td {
     border-color: var(--shell-border-strong);
 }
 
