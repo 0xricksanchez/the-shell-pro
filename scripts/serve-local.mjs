@@ -94,6 +94,31 @@ createServer(async (request, response) => {
 
     if (url.pathname.startsWith('/p/')) {
         file = join(CACHE, `${url.pathname.slice(3)}.html`);
+    } else if (url.pathname.startsWith('/content/')) {
+        /*
+         * Uploaded media lives in Ghost's content directory, which is not part of
+         * the theme. Proxy it from the mirror origin so articles render with their
+         * real figures — without this, every image 404s and figure wrappers
+         * collapse, which quietly makes visual checks of anything image-adjacent
+         * meaningless.
+         */
+        try {
+            const upstream = await fetch(ORIGIN + url.pathname + url.search);
+            if (!upstream.ok) {
+                response.writeHead(upstream.status);
+                response.end();
+                return;
+            }
+            response.writeHead(200, {
+                'content-type': upstream.headers.get('content-type') || 'application/octet-stream',
+                'cache-control': 'no-store'
+            });
+            response.end(Buffer.from(await upstream.arrayBuffer()));
+        } catch {
+            response.writeHead(502);
+            response.end('upstream fetch failed');
+        }
+        return;
     } else {
         // Everything else resolves against the working tree, so /assets/... is live.
         file = join(ROOT, url.pathname);
