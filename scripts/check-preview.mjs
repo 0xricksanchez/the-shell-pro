@@ -775,6 +775,34 @@ async function inspectTypeRoles() {
         'prose, headings and code resolve to three distinct typefaces',
         JSON.stringify(roles)
     );
+
+    const hierarchy = await evaluate(`(async () => {
+        await document.fonts.ready;
+        const article = document.querySelector('.article');
+        const content = document.querySelector('.article-content');
+        const px = (el) => Number.parseFloat(getComputedStyle(el).fontSize);
+        const sample = {};
+        for (const size of ['compact', 'default', 'large']) {
+            article.dataset.readerText = size;
+            await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+            sample[size] = {
+                body: px(content.querySelector('p')),
+                h4: px(content.querySelector('h4')),
+                h3: px(content.querySelector('h3')),
+                h2: px(content.querySelector('h2'))
+            };
+        }
+        article.dataset.readerText = 'default';
+        return sample;
+    })()`);
+    check(
+        ['compact', 'default', 'large'].every((size) => {
+            const s = hierarchy[size];
+            return s.h4 > s.body && s.h3 > s.h4 && s.h2 > s.h3;
+        }),
+        'heading hierarchy holds at every reader text size',
+        JSON.stringify(hierarchy)
+    );
 }
 
 async function inspectAccessibilityTree() {

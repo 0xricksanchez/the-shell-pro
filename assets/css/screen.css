@@ -776,7 +776,7 @@ button:focus-visible,
 
 .home-feed .post-card h2 {
     margin-top: .5rem;
-    font-size: clamp(1.15rem, 2vw, 1.45rem);
+    font-size: clamp(1.23rem, 2.1vw, 1.6rem);
 }
 
 .home-feed .post-card p:not(.eyebrow) {
@@ -892,8 +892,8 @@ button:focus-visible,
 .post-card h2 {
     margin: .8rem 0 0;
     font-family: var(--shell-heading);
-    font-size: clamp(1.22rem, 2.3vw, 1.65rem);
-    letter-spacing: -.04em;
+    font-size: clamp(1.3rem, 2.4vw, 1.8rem);
+    letter-spacing: -.01em;
     line-height: 1.2;
 }
 
@@ -1159,11 +1159,11 @@ button:focus-visible,
 }
 
 .article[data-reader-text="compact"] .article-content {
-    font-size: clamp(.92rem, 1.05vw, 1rem);
+    font-size: clamp(1rem, 1.14vw, 1.08rem);
 }
 
 .article[data-reader-text="large"] .article-content {
-    font-size: clamp(1.05rem, 1.36vw, 1.16rem);
+    font-size: clamp(1.14rem, 1.47vw, 1.26rem);
 }
 
 .article[data-reader-contrast="high"] .article-content {
@@ -1198,7 +1198,8 @@ body.reader-focus .reader-tools__trigger {
 }
 
 .article-header h1 {
-    font-size: clamp(2.15rem, 5vw, 4.1rem);
+    font-size: clamp(2.1rem, 1.35rem + 3.2vw, 3.6rem);
+    letter-spacing: -.015em;
 }
 
 .article-header--long-title h1 {
@@ -1277,7 +1278,7 @@ body.reader-focus .reader-tools__trigger {
     min-width: 0;
     grid-column: 1;
     color: #c4ceda;
-    font-size: clamp(.98rem, 1.2vw, 1.06rem);
+    font-size: clamp(1.0625rem, 1.3vw, 1.15rem);
     overflow-wrap: break-word;
 }
 
@@ -1294,22 +1295,29 @@ body.reader-focus .reader-tools__trigger {
     color: var(--shell-cyan);
     font-family: var(--shell-heading);
     font-weight: 700;
-    letter-spacing: -.045em;
+    letter-spacing: -.012em;
     line-height: 1.18;
     scroll-margin-top: 0;
 }
 
 .article-content h2 {
-    font-size: clamp(1.55rem, 3vw, 2.2rem);
+    font-size: 1.95em;
 }
 
 .article-content h3 {
-    color: #b8f6db;
-    font-size: clamp(1.22rem, 2.4vw, 1.6rem);
+    font-size: 1.45em;
 }
 
 .article-content h4 {
-    font-size: 1.14rem;
+    font-size: 1.15em;
+}
+
+.article-content h5 {
+    font-size: 1em;
+}
+
+.article-content h6 {
+    font-size: .9em;
 }
 
 .article-content p,
@@ -2623,6 +2631,7 @@ body.reader-focus .reader-tools__trigger {
 .error-page h1 {
     color: var(--shell-danger);
     font-size: clamp(4rem, 14vw, 9rem);
+    letter-spacing: -.015em;
 }
 
 .error-page > p:not(.eyebrow) {
