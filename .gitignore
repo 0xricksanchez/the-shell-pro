@@ -71,3 +71,6 @@ the-shell-pro-*.zip
 
 # Visual brainstorm companion sessions
 .superpowers/
+
+# Local harness fixture cache
+.cache/

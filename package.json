@@ -17,7 +17,8 @@
     "node": ">=22.12.0"
   },
   "scripts": {
-    "check:preview": "node scripts/check-preview.mjs"
+    "check:preview": "node scripts/check-preview.mjs",
+    "serve:local": "node scripts/serve-local.mjs"
   },
   "config": {
     "posts_per_page": 10,
