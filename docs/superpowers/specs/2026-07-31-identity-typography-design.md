@@ -57,8 +57,14 @@ four:
 | File | Weight range | Size |
 | --- | --- | --- |
 | `space-grotesk-var.woff2` | 500–700 | 22,320 B |
-| `ibm-plex-sans-var.woff2` | 400–600 | 40,240 B |
+| `ibm-plex-sans-var.woff2` | 400–700 | 40,240 B |
 | **Total** | | **62,560 B (61 KB)** |
+
+**Correction (2026-08-01):** the weight range above is the `@font-face`
+descriptor, not a property of the file. Google serves a byte-identical woff2
+for `wght@400..600` and `wght@400..700` — only the CSS descriptor differs. An
+earlier review wrongly concluded the vendored file "has no 700 axis end" and
+prescribed a re-fetch; widening the descriptor was the whole fix.
 
 Comfortably inside budget, and it gives the retune the full weight range to tune
 against instead of two fixed stops.
