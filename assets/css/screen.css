@@ -209,26 +209,6 @@ button:focus-visible,
     transform: translateY(0);
 }
 
-.reading-progress {
-    position: fixed;
-    z-index: 50;
-    top: 0;
-    right: 0;
-    left: 0;
-    height: 2px;
-    pointer-events: none;
-}
-
-.reading-progress span {
-    display: block;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, var(--shell-accent), var(--shell-cyan));
-    box-shadow: 0 0 .75rem color-mix(in srgb, var(--shell-accent) 72%, transparent);
-    transform: scaleX(0);
-    transform-origin: left center;
-}
-
 .site-header {
     position: sticky;
     z-index: 30;
@@ -2055,6 +2035,64 @@ body.reader-focus .reader-tools__trigger {
     grid-row: 1;
 }
 
+/*
+ * Progress spine. The map's left border doubles as the reading-position
+ * indicator, so no viewport-level chrome is needed.
+ */
+.toc {
+    background-image: linear-gradient(
+        to bottom,
+        var(--shell-accent) var(--toc-progress, 0%),
+        transparent var(--toc-progress, 0%)
+    );
+    background-repeat: no-repeat;
+    background-size: 1px 100%;
+    background-position: left top;
+}
+
+/*
+ * Corner ticks. A framing device, so they belong on rectangular panels — the
+ * feature image and the research map — and nowhere else. Not on code blocks: a
+ * kernel post carries fifteen.
+ *
+ * Anchored to .toc, not .article-toc: the latter is the grid-row placeholder
+ * that stretches the full height of the article so .toc has somewhere to be
+ * sticky within, not the panel a reader sees. Ticking .article-toc puts the
+ * corners at the top and bottom of the whole article instead of the bordered
+ * box on screen.
+ */
+.article-feature-image {
+    position: relative;
+}
+
+.article-feature-image::before,
+.article-feature-image::after,
+.toc::before,
+.toc::after {
+    position: absolute;
+    width: .85rem;
+    height: .85rem;
+    border: 0 solid color-mix(in srgb, var(--shell-accent) 55%, transparent);
+    content: "";
+    pointer-events: none;
+}
+
+.article-feature-image::before,
+.toc::before {
+    top: 0;
+    left: 0;
+    border-top-width: 1px;
+    border-left-width: 1px;
+}
+
+.article-feature-image::after,
+.toc::after {
+    right: 0;
+    bottom: 0;
+    border-right-width: 1px;
+    border-bottom-width: 1px;
+}
+
 .toc {
     position: sticky;
     top: 6rem;
@@ -2976,11 +3014,13 @@ body.reader-focus .reader-tools__trigger {
      * waypoint labels. There is no backdrop-filter, so the alpha bought nothing.
      */
     .toc {
-        position: static;
+        /* relative, not static: it stays the corner-tick anchor at this width too */
+        position: relative;
         max-height: none;
         padding: .65rem;
         border: 1px solid var(--shell-border);
         background: #141e2a;
+        background-image: none;
         box-shadow: 0 10px 24px rgba(0, 0, 0, .22);
     }
 
@@ -3332,7 +3372,6 @@ body.reader-focus .reader-tools__trigger {
 
     .site-header,
     .site-footer,
-    .reading-progress,
     .article-toc,
     .article-actions,
     .article-neighbours,

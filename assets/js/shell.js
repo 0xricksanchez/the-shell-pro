@@ -1460,19 +1460,39 @@
         });
     }
 
+    /*
+     * Reading progress lives on the research map, the component that already
+     * answers "where am I". The map's left border fills as a spine, and the
+     * waypoint count becomes time remaining once reading is under way — a
+     * question a percentage bar cannot answer.
+     */
     function setupReadingProgress() {
-        var progress = doc.querySelector('[data-reading-progress]');
+        var map = doc.querySelector('.toc');
         var article = doc.querySelector('.article');
-        if (!progress || !article) {
+        var count = doc.querySelector('.toc__count');
+        if (!map || !article) {
             return;
         }
-        var meter = progress.querySelector('span');
-        progress.hidden = false;
+        var totalMinutes = parseInt((doc.querySelector('.article-meta') || {}).textContent
+            ? (doc.querySelector('.article-meta').textContent.match(/(\d+)\s*min/) || [])[1]
+            : '', 10);
+        var originalCount = count ? count.textContent : '';
+        var lastText = originalCount;
         var update = function () {
             var start = article.offsetTop - 112;
             var distance = Math.max(article.offsetHeight - window.innerHeight + 224, 1);
             var ratio = Math.min(1, Math.max(0, (window.scrollY - start) / distance));
-            meter.style.transform = 'scaleX(' + ratio + ')';
+            map.style.setProperty('--toc-progress', (ratio * 100).toFixed(2) + '%');
+            if (count && totalMinutes > 0) {
+                var left = Math.ceil(totalMinutes * (1 - ratio));
+                var text = ratio < 0.02 || left < 1
+                    ? originalCount
+                    : left + ' min left';
+                if (text !== lastText) {
+                    count.textContent = text;
+                    lastText = text;
+                }
+            }
         };
         update();
         window.addEventListener('scroll', update, {passive: true});
