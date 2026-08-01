@@ -2142,6 +2142,7 @@ body.reader-focus .reader-tools__trigger {
     padding: .08rem .3rem .08rem .42rem;
     border-radius: .2rem;
     color: var(--shell-muted);
+    font-family: var(--shell-font-display);
     font-size: .71rem;
     line-height: 1.45;
     overflow-wrap: anywhere;
@@ -2166,7 +2167,6 @@ body.reader-focus .reader-tools__trigger {
 .toc__item--level-1 > a,
 .toc__item--level-2 > a {
     color: #aebdcb;
-    font-family: var(--shell-font-display);
     font-weight: 700;
 }
 
