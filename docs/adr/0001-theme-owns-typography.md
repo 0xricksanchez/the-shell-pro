@@ -4,8 +4,8 @@ Ghost emits `--gh-font-heading` and `--gh-font-body` when a font is chosen in
 Design & branding → Typography, and `screen.css` previously deferred to them.
 That was harmless while every face in the theme was monospace, but the identity
 work tunes the entire type scale — sizes, `letter-spacing`, `line-height`, and
-the code-to-prose size ratio the preview suite asserts — against Space Grotesk's
-specific metrics. Honouring the Ghost setting would let an admin toggle silently
+the code-to-prose size ratio the preview suite asserts — against the Monaspace
+superfamily's specific metrics. Honouring the Ghost setting would let an admin toggle silently
 invalidate that tuning and leave headings mis-sized and mis-tracked, so the
 indirection is removed and the two `--shell-font-*` tokens are authoritative.
 

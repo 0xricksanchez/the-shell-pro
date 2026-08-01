@@ -762,16 +762,18 @@ async function inspectTypeRoles() {
             prose: family(prose),
             code: family(code),
             heading: family(heading),
-            displayLoaded: document.fonts.check('700 1rem "Space Grotesk"'),
-            textLoaded: document.fonts.check('400 1rem "IBM Plex Sans"')
+            displayLoaded: document.fonts.check('700 1rem "Monaspace Krypton"'),
+            textLoaded: document.fonts.check('400 1rem "Monaspace Xenon"'),
+            codeLoaded: document.fonts.check('400 1rem "Monaspace Neon"')
         };
     })()`);
     check(
-        /Space Grotesk/.test(roles.heading)
-            && /IBM Plex Sans/.test(roles.prose)
-            && !/IBM Plex Sans|Space Grotesk/.test(roles.code)
+        /Monaspace Krypton/.test(roles.heading)
+            && /Monaspace Xenon/.test(roles.prose)
+            && /Monaspace Neon/.test(roles.code)
             && roles.displayLoaded
-            && roles.textLoaded,
+            && roles.textLoaded
+            && roles.codeLoaded,
         'prose, headings and code resolve to three distinct typefaces',
         JSON.stringify(roles)
     );
