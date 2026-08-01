@@ -40,22 +40,35 @@ Re-check custom setting values after uploading a theme version that changes the 
 ## Changing the fonts
 
 The theme owns its typography — Ghost's **Design & branding → Typography**
-setting is deliberately not consulted, because the type scale is tuned to Space
-Grotesk's metrics and an arbitrary substitution would invalidate it. See
-`docs/adr/0001-theme-owns-typography.md`.
+setting is deliberately not consulted, because the type scale is tuned to the
+Monaspace superfamily's metrics and an arbitrary substitution would invalidate
+it. See `docs/adr/0001-theme-owns-typography.md`.
+
+Type is the Monaspace superfamily (three files, ~92 KB total, subsetted to
+Latin): Krypton for headings/chrome, Xenon for body prose, and Neon for code
+(`--shell-mono`). All three are variable fonts sharing one set of metrics, so
+they can be mixed on a page without a rhythm clash.
+
+`scripts/vendor-fonts.py` re-fetches and re-subsets them reproducibly:
+
+```sh
+pip install 'fonttools[woff]' brotli   # a plain `uv tool install fonttools`
+                                        # has no brotli and silently fails to
+                                        # write woff2 — install it this way
+python3 scripts/vendor-fonts.py
+```
 
 To change a face:
 
-1. Drop a `woff2` into `assets/fonts/`.
+1. Drop a `woff2` into `assets/fonts/`, ideally via `scripts/vendor-fonts.py`.
 2. Update the matching `@font-face` block at the top of `assets/css/screen.css`.
-3. Update `--shell-font-display` or `--shell-font-text` in `:root`.
+3. Update `--shell-font-display`, `--shell-font-text`, or `--shell-mono` in
+   `:root`.
 4. If you changed the display face, update the `<link rel="preload">` in
    `default.hbs`.
 5. Re-measure the paired `*-Fallback` `@font-face` metrics, and expect to retune
    the heading scale — a narrower or wider face will not sit correctly at the
    current sizes and tracking.
-
-Monospace is intentionally a system stack and takes no webfont.
 
 **Supported accent colours.** Set the accent in Ghost Admin. These four are
 designed and contrast-tested against the theme background:

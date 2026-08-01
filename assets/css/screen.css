@@ -1,11 +1,11 @@
 :root {
     /* Structural — fixed. Background ramp, surfaces, borders, text. */
-    --shell-bg: #080c13;
-    --shell-surface: #131c27;
-    --shell-surface-raised: #1b2634;
+    --shell-bg: #111822;
+    --shell-surface: #18222f;
+    --shell-surface-raised: #202d3d;
     --shell-text: #d5dce7;
     --shell-muted: #8492a5;
-    --shell-border: #2a3a4d;
+    --shell-border: #304257;
     --shell-border-strong: #4a6076;
 
     /* Brand — author-settable via Ghost. Never used to encode meaning. */
@@ -20,6 +20,18 @@
      * for TEXT only — borders and fills stay on the raw accent.
      */
     --shell-accent-on-surface: color-mix(in srgb, var(--shell-accent) 78%, #ffffff);
+
+    /*
+     * Prose links fall through to the base `a` rule below and sit on --shell-bg.
+     * The raw accent only clears WCAG AA there for some of the four supported
+     * accents — the pink accent measures 4.35:1 against #111822. A deepened
+     * background previously papered over this (4.77:1 against #080c13, but
+     * tiring in a dark room for no reason the reader can see). Lifting the
+     * link colour toward white is the correct lever: every accent clears
+     * 4.5:1 against #111822 and the fix tracks whatever accent the author
+     * sets instead of hard-coding a colour.
+     */
+    --shell-link: color-mix(in srgb, var(--shell-accent) 85%, #ffffff);
 
     /*
      * Semantic — theme-owned, fixed, never derived from the accent.
@@ -38,13 +50,23 @@
     --shell-yellow: var(--shell-tone-limitation);
 
     --shell-shadow: 0 18px 60px rgba(0, 0, 0, .28);
-    --shell-mono: ui-monospace, "Cascadia Code", "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    /*
+     * Monaspace Neon, parsed role. The ten rules that pin var(--shell-mono)
+     * for code, line numbers, timestamps and counts keep pinning it — they
+     * now resolve to Neon instead of the system stack, which is kept here as
+     * the fallback list so a machine without Neon still gets a real monospace.
+     */
+    --shell-mono: "Monaspace Neon", ui-monospace, "Cascadia Code", "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
     /*
      * The theme owns its typography; Ghost's Design & branding font settings are
      * deliberately not consulted. See docs/adr/0001-theme-owns-typography.md.
+     *
+     * Krypton (scanned), Xenon (read) and Neon (parsed, above) are three
+     * members of one superfamily sharing metrics, so headings, prose and code
+     * sit on a single rhythm instead of unrelated families cooperating.
      */
-    --shell-font-display: "Space Grotesk", "Space Grotesk Fallback", system-ui, sans-serif;
-    --shell-font-text: "IBM Plex Sans", "Plex Fallback", system-ui, sans-serif;
+    --shell-font-display: "Monaspace Krypton", "Monaspace Krypton Fallback", ui-monospace, monospace;
+    --shell-font-text: "Monaspace Xenon", "Monaspace Xenon Fallback", ui-monospace, monospace;
     --shell-font-icon: "Apple Symbols", "Segoe UI Symbol", "Noto Sans Symbols 2", system-ui, sans-serif;
     --shell-body: var(--shell-font-text);
     --shell-heading: var(--shell-font-display);
@@ -61,30 +83,35 @@
 }
 
 /*
- * Identity faces. Both are variable fonts carrying their full weight range in a
- * single file, latin slice only. Iconographic characters (▣ ☰ ⌕ ← → ⇾) are NOT
- * in these files and must never be set in them — see --shell-font-icon.
+ * Identity faces. Three members of the Monaspace superfamily, built on shared
+ * metrics so they can mix on one page: Krypton for scanned surfaces (headings,
+ * eyebrows, breadcrumbs, badges, chrome labels), Xenon for read surfaces (body
+ * prose, decks, captions, excerpts), Neon for parsed surfaces (code, line
+ * numbers, timestamps, counts — declared with --shell-mono above). All three
+ * are variable fonts carrying their full weight range in a single file, latin
+ * slice only. Iconographic characters (▣ ☰ ⌕ ← → ⇾) are NOT in these files and
+ * must never be set in them — see --shell-font-icon.
  */
 @font-face {
-    font-family: "Space Grotesk";
-    src: url("../fonts/space-grotesk-var.woff2") format("woff2");
-    font-weight: 500 700;
+    font-family: "Monaspace Krypton";
+    src: url("../fonts/mona-krypton.woff2") format("woff2");
+    font-weight: 200 800;
     font-style: normal;
     font-display: swap;
 }
 
-/*
- * 400 700, not 400 600. `<strong>` in prose and `<th>` in tables both ask for
- * 700; a 600 upper bound clamps them, so bold emphasis and table headers came
- * out visibly weaker than the monospace they replaced. The vendored file is
- * Google's full latin variable slice — the same bytes are served for
- * `wght@400..600` and `wght@400..700`, only the descriptor differs — so the
- * axis end was always present and only this line was withholding it.
- */
 @font-face {
-    font-family: "IBM Plex Sans";
-    src: url("../fonts/ibm-plex-sans-var.woff2") format("woff2");
-    font-weight: 400 700;
+    font-family: "Monaspace Xenon";
+    src: url("../fonts/mona-xenon.woff2") format("woff2");
+    font-weight: 200 800;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Monaspace Neon";
+    src: url("../fonts/mona-neon.woff2") format("woff2");
+    font-weight: 200 800;
     font-style: normal;
     font-display: swap;
 }
@@ -93,21 +120,24 @@
  * Metric-matched fallbacks. Without these, `swap` reflows an entire 40-minute
  * article when the real face arrives and displaces a reader mid-scroll. These
  * overrides make the fallback occupy near-identical space, so the swap changes
- * letterform shape without changing layout. Values are measured in Task 3.
+ * letterform shape without changing layout. The local face is a monospace,
+ * not Helvetica/Arial — every face on the page is monospace now. size-adjust
+ * is the measured advance-width ratio of the real face to the local fallback
+ * for an identical string at a fixed size; see mona-swap-report.md for method.
  */
 @font-face {
-    font-family: "Space Grotesk Fallback";
-    src: local("Helvetica Neue"), local("Arial");
-    size-adjust: 100.6%;
+    font-family: "Monaspace Krypton Fallback";
+    src: local("Menlo"), local("Consolas"), local("DejaVu Sans Mono");
+    size-adjust: 103%;
     ascent-override: 95%;
     descent-override: 25%;
     line-gap-override: 0%;
 }
 
 @font-face {
-    font-family: "Plex Fallback";
-    src: local("Helvetica Neue"), local("Arial");
-    size-adjust: 100%;
+    font-family: "Monaspace Xenon Fallback";
+    src: local("Menlo"), local("Consolas"), local("DejaVu Sans Mono");
+    size-adjust: 103%;
     ascent-override: 95%;
     descent-override: 25%;
     line-gap-override: 0%;
@@ -164,7 +194,7 @@ img {
 }
 
 a {
-    color: var(--shell-accent);
+    color: var(--shell-link);
     text-decoration-color: color-mix(in srgb, currentColor 45%, transparent);
     text-underline-offset: .17em;
     transition: color .18s ease, background-color .18s ease, border-color .18s ease;
@@ -984,16 +1014,28 @@ button:focus-visible,
     padding: clamp(2.25rem, 5vw, 4.25rem) 0 0;
 }
 
+/*
+ * Monaspace Xenon is a monospace, so it is much wider per character than the
+ * proportional face these numbers were previously tuned for. Measured against
+ * the real font at a desktop viewport (Xenon's advance width at the pinned
+ * 18.4px article-content max is 11.408px/char): 880px lands the standard
+ * setting at ~77 characters per line (target 75-80), 810px (focused) and
+ * 940px (wide) scale it by roughly the same ratio the mono-era values used.
+ * Wide is capped just under the article layout's hard ceiling — with the TOC
+ * column present, .site-main--article's 1240px budget only leaves ~944px for
+ * the content track, so 940px is close to the most this setting can ever use.
+ * See mona-swap-report.md for the full measurement.
+ */
 .article {
-    --reader-measure: 630px;
+    --reader-measure: 880px;
 }
 
 .article[data-reader-measure="focused"] {
-    --reader-measure: 575px;
+    --reader-measure: 810px;
 }
 
 .article[data-reader-measure="wide"] {
-    --reader-measure: 700px;
+    --reader-measure: 940px;
 }
 
 .article-header {
@@ -1203,8 +1245,13 @@ button:focus-visible,
     color: #fff;
 }
 
+/*
+ * Must sit at a lower accent percentage than --shell-link's 85% baseline —
+ * more white, not less — or "high contrast" would pull prose links back
+ * toward the raw accent and lower their contrast instead of raising it.
+ */
 .article[data-reader-contrast="high"] .article-content a {
-    color: color-mix(in srgb, var(--shell-accent) 72%, #ffffff);
+    color: color-mix(in srgb, var(--shell-accent) 60%, #ffffff);
     text-decoration-thickness: .11em;
 }
 
@@ -1323,8 +1370,14 @@ body.reader-focus .reader-tools__trigger {
     gap: clamp(2rem, 5vw, 5.5rem);
 }
 
+/*
+ * Was a literal 740px — the old standard reader-measure, hard-coded instead
+ * of referencing the token. That silently pinned TOC-less articles to a
+ * stale width and made the reader's measure control (focused/standard/wide)
+ * do nothing for them. Tying it to the token fixes both.
+ */
 .article-layout--without-toc {
-    grid-template-columns: minmax(0, 740px);
+    grid-template-columns: minmax(0, var(--reader-measure));
 }
 
 .article-content {
