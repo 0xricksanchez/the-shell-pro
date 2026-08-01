@@ -7,6 +7,14 @@
     --shell-muted: #8492a5;
     --shell-border: #304257;
     --shell-border-strong: #4a6076;
+    /*
+     * Opaque panel background for anything sticky over scrolling content
+     * without a backdrop-filter: the mobile research map, its sticky tab bar,
+     * and the mobile nav dropdown. Not derived from --shell-surface via
+     * color-mix — those blends are translucent tints for accents, and any
+     * alpha here would let scrolled content ghost through underneath.
+     */
+    --shell-surface-overlay: #141e2a;
 
     /* Brand — author-settable via Ghost. Never used to encode meaning. */
     --shell-accent: #35e0a1;
@@ -240,6 +248,9 @@ button:focus-visible,
     padding: .6rem .9rem;
     color: #07130f;
     background: var(--shell-accent);
+    /* Interface hint, not prose — CONTEXT.md classes it scanned. It was
+       falling through to body's text face for lack of a rule of its own. */
+    font-family: var(--shell-font-display);
     transform: translateY(-150%);
 }
 
@@ -1388,6 +1399,7 @@ body.reader-focus .reader-tools__trigger {
 }
 
 .article-feature-image {
+    position: relative;
     width: min(1120px, 100%);
     margin: 2.25rem auto 0;
 }
@@ -2001,7 +2013,9 @@ body.reader-focus .reader-tools__trigger {
 
 .figure-artifact__number {
     color: var(--shell-accent);
-    font-family: var(--shell-font-display);
+    /* "Fig. 04" is a value, not a label — a one-character difference changes
+       what it means, which CONTEXT.md classes parsed, not scanned. */
+    font-family: var(--shell-mono);
 }
 
 .figure-artifact__hint {
@@ -2336,14 +2350,27 @@ body.reader-focus .reader-tools__trigger {
  * an ellipsis in the sidebar. Auto tracks still absorb the leftover space, so
  * the bar stays filled, and they fall back to ellipsis only if the labels
  * genuinely cannot fit.
+ *
+ * Sticky at every width, not just the ≤900px collapsed layout: .toc__tabs is
+ * the first child of .toc__body, and the overflow that used to live on .toc
+ * itself now lives on .toc__body (see the .toc comment above), which means the
+ * tab bar is inside the scroll container on desktop too. Without position:
+ * sticky here it scrolled out of view with the waypoint list on long maps
+ * (glibc runs 46 waypoints). The background has to be opaque, not the
+ * translucent rgba() this rule used before sticky made it necessary — there is
+ * no backdrop-filter, so a translucent bar lets scrolled waypoints ghost
+ * through underneath it.
  */
 .toc__tabs {
+    position: sticky;
+    z-index: 1;
+    top: 0;
     display: grid;
     grid-template-columns: repeat(2, auto);
     margin: 0 0 .72rem;
     padding: .18rem;
     border: 1px solid var(--shell-border);
-    background: rgba(9, 14, 21, .44);
+    background: var(--shell-surface-overlay);
     gap: .18rem;
 }
 
@@ -3231,7 +3258,7 @@ body.reader-focus .reader-tools__trigger {
         max-height: none;
         padding: .65rem;
         border: 1px solid var(--shell-border);
-        background: #141e2a;
+        background: var(--shell-surface-overlay);
         background-image: none;
         box-shadow: 0 10px 24px rgba(0, 0, 0, .22);
     }
@@ -3294,13 +3321,6 @@ body.reader-focus .reader-tools__trigger {
         overflow: auto;
     }
 
-    .toc__tabs {
-        position: sticky;
-        z-index: 1;
-        top: 0;
-        background: #141e2a;
-    }
-
     .toc a {
         min-height: 2.75rem;
         padding: .35rem .25rem;
@@ -3340,7 +3360,7 @@ body.reader-focus .reader-tools__trigger {
         padding: .5rem;
         overflow-y: auto;
         border: 1px solid var(--shell-border);
-        background: #141e2a;
+        background: var(--shell-surface-overlay);
         box-shadow: var(--shell-shadow);
         overscroll-behavior: contain;
     }
@@ -3595,7 +3615,16 @@ body.reader-focus .reader-tools__trigger {
     .shell-code-expand,
     .reader-tools,
     .reader-dialog,
-    .image-lightbox {
+    .image-lightbox,
+    /* Corner ticks: accent-tinted marks with nothing to say once the page is
+       ink on paper. .toc's own ticks are already gone with .article-toc above;
+       these cover the panels that print — the feature image, figures and
+       research blocks — explicitly rather than relying on that. */
+    .article-feature-image::before,
+    .article-feature-image::after,
+    .article-content figure::before,
+    .article-content figure::after,
+    .research-block::after {
         display: none !important;
     }
 
