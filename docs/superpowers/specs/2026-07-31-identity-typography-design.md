@@ -46,18 +46,59 @@ not add features.
 
 ## 1. Font assets and loading (`assets/fonts/`, `default.hbs`)
 
-Self-host both families as `woff2` in `assets/fonts/`, subset to Latin plus the
-punctuation the templates use. Both are SIL Open Font License, so redistribution
-inside the theme zip is permitted; include the licence files.
+Self-host both families as `woff2` in `assets/fonts/`. Both are SIL Open Font
+License, so redistribution inside the theme zip is permitted; include the licence
+files.
 
 - Space Grotesk — weights 500 and 700.
 - IBM Plex Sans — weights 400 and 600.
 
-Four files, target **≤ 80 KB total**. For reference, removing the site-wide
-asciinema injection recovered 185 KB, so this stays comfortably net-negative.
+**Subset asymmetrically.** The display face never renders running prose, so it
+only needs Basic Latin, Latin-1 Supplement, General Punctuation and Arrows. The
+text face does render prose, and prose on this site contains technical notation,
+so it additionally gets Greek (`λ`, `μ`, `Δ`, `σ`), Mathematical Operators and
+super/subscripts. Asymmetry keeps the total down while covering what is actually
+used.
+
+Target **≤ 100 KB total** across four files — raised from an earlier 80 KB now
+that the text face carries technical ranges. Removing the site-wide asciinema
+injection recovered 185 KB, so this stays net-negative.
+
+**Iconographic characters are excluded from both webfonts.** Audit of prose
+outside code blocks found `▣ ☰ ⌕ ↑ ← → ⇾ ⇿` in use, several of which Space
+Grotesk does not contain at any subset. They are pinned to `--shell-font-icon`,
+a system stack chosen for symbol coverage. Any operator a face genuinely lacks
+(`∈` is doubtful even in IBM Plex Sans) falls back — an accepted case, verified
+during implementation rather than discovered in production.
 
 Declare with `@font-face` and `font-display: swap`. Preload only the display face
 (it renders in the article title, above the fold); the text face loads normally.
+
+**Metric-matched fallbacks.** `swap` alone would reflow an entire 40-minute
+article when the text face arrives, displacing a reader who has already started
+scrolling — monospace and IBM Plex Sans have very different widths. Each webfont
+therefore gets a paired fallback `@font-face` wrapping a `local()` face with
+`size-adjust`, `ascent-override` and `descent-override` tuned so it occupies
+almost exactly the same space:
+
+```css
+@font-face {
+  font-family: "Plex Fallback";
+  src: local("Arial");
+  size-adjust: 107%;      /* measured, not guessed */
+  ascent-override: 95%;
+  descent-override: 25%;
+}
+```
+
+The stack becomes `"IBM Plex Sans", "Plex Fallback", system-ui`. The swap then
+changes letterform shape without changing layout. Pure CSS, no build step. The
+override percentages must be measured against the actual fallback during
+implementation rather than copied from this example.
+
+`font-display: optional` was rejected: it avoids reflow by not using the webfont
+at all on first visit, which would mean the identity does not render for a large
+share of readers.
 
 Subsetting happens once and the output is committed. No build step is introduced
 — the theme keeps its "no build, no runtime dependencies" property.
@@ -70,12 +111,22 @@ where set, as they do today.
 ```css
 --shell-font-display: "Space Grotesk", system-ui, sans-serif;
 --shell-font-text:    "IBM Plex Sans", system-ui, sans-serif;
---shell-body:    var(--gh-font-body, var(--shell-font-text));
---shell-heading: var(--gh-font-heading, var(--shell-font-display));
+--shell-body:    var(--shell-font-text);
+--shell-heading: var(--shell-font-display);
 ```
 
 The new tokens are named `--shell-font-*` deliberately: `--shell-text` already
 exists as a *colour* token (`#d5dce7`), and reusing that name would collide.
+
+**The `--gh-font-*` indirection is removed.** Both faces stop being defaults the
+theme politely yields on and become identity the theme owns. See
+`docs/adr/0001-theme-owns-typography.md`.
+
+Because that removes the only no-code way to change the faces, the README gains
+a short **"Changing the fonts"** section: which two tokens to edit, where the
+`@font-face` blocks live, that the display face is preloaded in `default.hbs`,
+and the warning that the type scale in §4 is tuned to Space Grotesk's metrics so
+a substituted face will need the scale retuned with it.
 
 This is the whole of the mechanical change. An audit of all 14 `font-family`
 declarations confirms the seams already exist:
@@ -124,42 +175,157 @@ Retune across the scale:
 - Reset negative tracking to roughly `-.01em` on large display sizes and `0` at
   section-heading sizes.
 - Body prose: target ~17px at default with `line-height` ~1.65, preserving the
-  existing `clamp()` shape so the reader controls keep working
-  (`[data-reader-text="compact"|"large"]` scale `.article-content` font-size).
+  existing `clamp()` shape so the reader controls keep working.
+- **Article headings become `em`-based**, proportional to `.article-content`, so
+  the reader's text-size control scales the whole reading surface rather than
+  only its paragraphs. Set the ratios first and let the maximum fall out.
 - Preserve the invariant the preview suite asserts: code font-size ≤ 80% of
   prose font-size, and line-number size exactly equal to code size.
 
+**Defect this fixes.** Headings currently use root-relative clamps, so they do
+not scale with the reader control and the hierarchy inverts at the Large setting:
+at 1440px, body prose renders 18.56px while `h4` is a fixed `1.14rem` = 18.24px —
+a heading smaller than the paragraph it introduces. `h3`'s floor (19.5px) is
+barely above body. Proportional `em` sizing makes the inversion structurally
+impossible rather than something to re-check after every change.
+
+`h3` also carries a hard-coded `#b8f6db` mint green while `h2` inherits cyan from
+the group rule; headings should be consistently tokenised.
+
 ## 5. Palette
 
-Deepen the background so the instrumented chrome has something to sit against,
-and reduce the supporting hue count. Today the palette carries accent-green,
-cyan, magenta, yellow and danger; that is more hues than the design uses
-meaningfully.
+**Correction to an earlier draft:** this section previously called for retiring a
+hue. That was wrong. `screen.css:1345-1367` shows the supporting hues are a
+semantic encoding on research blocks — cyan for hypothesis/environment/
+reproduction, accent for method, magenta for finding, yellow for
+limitation/safety. They encode what kind of claim a block makes. The problem is
+not hue *count*, it is hue *overloading*.
 
-- Background: `#111822` → approximately `#080c13`.
+- Background: `#111822` → approximately `#080c13`. This also lifts link contrast
+  from **4.38:1 to 4.77:1**, clearing WCAG AA (see below).
 - Rebuild the neutral ramp as 4–5 deliberate steps between background and text.
-- Keep `--shell-accent` author-controlled and let it carry more of the emphasis.
-- Retain one signal hue (amber) for wayfinding — eyebrows, active waypoint.
-- Retire or demote whichever of cyan/magenta/yellow does not survive that.
+- Headings keep their colour. Going neutral would leave the page over-white and
+  strip the warmth that currently carries the reading surface.
+- Remove the ten hard-coded greens (`rgba(53, 224, 161, …)` at lines 149, 255,
+  547, 686, 802, 1493, 2290, 2463 and `#63f0ba` at 1126). They assume the theme's
+  default accent while the site actually ships `#dc4474`, so the live palette is
+  already internally inconsistent — green hover washes and a green progress glow
+  against pink links. Every accent-derived value must be computed from
+  `--shell-accent` with `color-mix()`.
+
+**Known defect this fixes:** `#dc4474` on `#111822` is 4.38:1, below the 4.5:1
+AA threshold, and it is the colour of every link in running prose.
+
+### Three colour families, hard boundaries
+
+The palette is reorganised so that changing one family cannot corrupt another.
+
+**Brand** — `--shell-accent`, author-settable through Ghost as today. Drives
+links, buttons, active and selected states, interactive glow. Every derived value
+computed with `color-mix()` from the token; no hard-coded accent literals.
+
+**Semantic** — the four research tones plus danger. Fixed by the theme, never
+author-settable and **never derived from the accent**. "Method" stops being
+`var(--shell-accent)` and gets its own designed hue. See
+`docs/adr/0002-brand-colour-and-semantic-colour-are-separate.md`.
+
+**Structural** — background ramp, surfaces, borders, text, muted. Fixed.
+
+The problem this solves is live today: the accent is `#dc4474` (red-pink) while
+"finding" is `#e697ff` (light purple), so method and finding blocks are already
+harder to distinguish than intended. A purple accent would collapse them
+entirely — an author changing their branding would silently break an information
+encoding they did not know was attached to it.
+
+### Supported accents
+
+The theme is tuned and verified against a small curated set rather than an
+arbitrary colour space. Ghost's picker stays free — so Portal keeps matching the
+site — but only these are designed and tested:
+
+| Name | Value | Contrast on `#080c13` |
+| --- | --- | --- |
+| Signal green | `#35e0a1` | passes (theme default) |
+| Alert red | `#dc4474` | 4.77:1 — passes, currently 4.38:1 and failing |
+| Ice blue | `#57b6ff` | ≈ 9:1 |
+| Amber | `#ff9448` | ≈ 8.9:1 |
+
+Values for ice blue and amber are proposals carried over from the approved
+mockup; all four must be re-measured against the final background during
+implementation, since the background value itself is still approximate.
+
+The raw token is used directly for text: the four are designed so that
+unmodified they clear AA for prose links. There is deliberately **no**
+contrast-floor transformation between the picker and the rendered link colour —
+what the author picks is what renders.
+
+This does not conflict with the "no hard-coded accent literals" rule above. That
+rule concerns *derived* surfaces — hover washes, tints, glows — which must be
+computed from the token with `color-mix()` so they follow the accent instead of
+drifting green. What is ruled out here is a transformation applied to the accent
+*as text colour*.
+
+Off-list accents are unsupported and may look bad; that is an accepted trade-off,
+not a bug.
+
+Enforcement lives in the test suite, not the admin UI: the preview checks assert
+that every supported accent clears AA.
 
 The syntax-highlighting palette is a separate system and is **not** changed.
 
 All text/background pairs must clear WCAG AA (4.5:1 body, 3:1 large). The print
 stylesheet's ink-on-paper overrides stay as they are.
 
+### Light mode is out of scope
+
+Not deferred — declined. The register is darkness: corner ticks, deep surfaces,
+interactive glow and syntax colours tuned for a near-black ground. A light
+variant would be a second design sharing a layout, not a recolour, and would cost
+roughly what the rest of this phase costs while doubling the QA surface.
+
+### High-contrast mode becomes real
+
+`[data-reader-contrast="high"]` is currently three rules (`screen.css:1117-1128`):
+body colour, `strong` colour, link colour. That is a stub. It absorbs the
+eye-comfort need that light mode would otherwise serve, and gains: stronger
+border colours, brighter muted text, higher code-surface contrast, and a link
+treatment derived from the accent rather than the hard-coded `#63f0ba`.
+
 ## 6. Instrumented chrome
 
-- **Corner ticks** on the article hero and the research map only. Not on code
-  blocks: a kernel post carries fifteen, and ticks on each would be noise.
-- **Status rail** — folded into the existing breadcrumb row rather than added as
-  a new one. That row currently holds breadcrumbs plus the Reader button; it
-  gains a right-aligned waypoint counter (`WP 03 / 11`) driven by the scroll-spy
-  state the ToC already maintains. This is a redesign of existing chrome, not an
-  additional band.
+- **Corner ticks** on the **feature image** and the research map panel only.
+  "Hero" was ambiguous in an earlier draft: ticks bracket a rectangular panel and
+  read as a framing device, so they belong on the image (every post has one) and
+  on the map, not around the article header's text block. Not on code blocks
+  either — a kernel post carries fifteen, and ticks on each would be noise.
+- **No status rail, and no position indicator in the breadcrumb row.** Both were
+  considered and cut. The word `rail` is already taken by `site-footer__rail`,
+  and a third "where am I" indicator alongside the research map and the progress
+  meter fails its own test. Corner ticks carry the instrumented feel alone.
 
-No new navigational affordance is introduced. The site already has a reading
-progress meter, breadcrumbs, the research map, back-to-top and reader controls;
-the rail must reuse existing state, not duplicate it.
+### Reading progress moves into the research map
+
+The fixed 2px viewport bar (`.reading-progress`, `default.hbs:36`) is **deleted**.
+It is already `aria-hidden="true"` and `pointer-events: none` — the theme
+classifies it as decoration — and it has no preview-suite coverage, so nothing
+holds it in place.
+
+Progress becomes a property of the research map, which is already the component
+that answers "where am I":
+
+- **Progress spine.** The map's existing `border-left` fills with the accent in
+  proportion to reading position. No new element.
+- **Time remaining.** The map header's `11 waypoints` line switches to remaining
+  reading time once scrolling begins — `18 min left`. Computed as total read
+  time × (1 − scroll ratio) and rounded to the minute, so it changes about twice
+  a minute rather than on every scroll event. This reuses vocabulary the site
+  already speaks ("39 min read") and answers a question a percentage bar cannot.
+
+On mobile the map is collapsed, so the spine is omitted there; the header line
+still shows time remaining when the map is open.
+
+Net effect: one viewport-level element removed, no new components, and one piece
+of genuinely new information for readers of 40-minute articles.
 
 Motion stays as-is. `prefers-reduced-motion` handling is already global.
 
@@ -172,6 +338,15 @@ Motion stays as-is. `prefers-reduced-motion` handling is already global.
   this is the whole point of the phase and should not be able to silently
   regress.
 - Add an assertion that both webfonts actually load (`document.fonts.check`).
+- **Heading hierarchy never inverts.** Assert `h4 > body` font-size at every
+  reader text-size setting, which is the defect §4 fixes.
+- **Every supported accent clears AA.** Drive `--shell-accent` through each of
+  the four values and assert the computed link colour against the article
+  background. This is where accent curation is enforced.
+- **No accent literals survive.** Assert the stylesheet contains no
+  `rgba(53, 224, 161` or `#63f0ba`, so the greens cannot creep back.
+- **Iconographic characters render.** Assert the brand mark, menu and search
+  glyphs have non-zero width and are not falling back to tofu.
 
 ## Out of scope
 
