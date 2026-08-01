@@ -50,19 +50,31 @@ Self-host both families as `woff2` in `assets/fonts/`. Both are SIL Open Font
 License, so redistribution inside the theme zip is permitted; include the licence
 files.
 
-- Space Grotesk — weights 500 and 700.
-- IBM Plex Sans — weights 400 and 600.
+**Measured, superseding earlier estimates in this section.** Both families are
+distributed as *variable* fonts, so the whole thing is **two files** rather than
+four:
 
-**Subset asymmetrically.** The display face never renders running prose, so it
-only needs Basic Latin, Latin-1 Supplement, General Punctuation and Arrows. The
-text face does render prose, and prose on this site contains technical notation,
-so it additionally gets Greek (`λ`, `μ`, `Δ`, `σ`), Mathematical Operators and
-super/subscripts. Asymmetry keeps the total down while covering what is actually
-used.
+| File | Weight range | Size |
+| --- | --- | --- |
+| `space-grotesk-var.woff2` | 500–700 | 22,320 B |
+| `ibm-plex-sans-var.woff2` | 400–600 | 40,240 B |
+| **Total** | | **62,560 B (61 KB)** |
 
-Target **≤ 100 KB total** across four files — raised from an earlier 80 KB now
-that the text face carries technical ranges. Removing the site-wide asciinema
-injection recovered 185 KB, so this stays net-negative.
+Comfortably inside budget, and it gives the retune the full weight range to tune
+against instead of two fixed stops.
+
+**Subsetting needs no local tooling.** Google Fonts already serves per-range
+woff2 slices; the `latin` slice (`U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC,
+U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122,
+U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD`) is downloaded once and
+committed. No `fonttools`, no build step.
+
+**An audit of all 21 posts replaces this section's earlier speculation.** Prose
+outside code blocks contains **no Greek** and **no Latin Extended** whatsoever,
+so both ranges are dropped. Mathematical operators amount to five characters
+site-wide (`≤`×2, `≈`×2, `∈`×1); they are outside the latin slice and will fall
+back to a system face. Five characters across 21 posts does not justify a second
+slice per family.
 
 **Iconographic characters are excluded from both webfonts.** Audit of prose
 outside code blocks found `▣ ☰ ⌕ ↑ ← → ⇾ ⇿` in use, several of which Space
@@ -103,8 +115,8 @@ share of readers.
 Subsetting happens once and the output is committed. No build step is introduced
 — the theme keeps its "no build, no runtime dependencies" property.
 
-Ghost's own font settings (`--gh-font-body`, `--gh-font-heading`) continue to win
-where set, as they do today.
+Ghost's own font settings (`--gh-font-body`, `--gh-font-heading`) are **no longer
+consulted** — see §2 and `docs/adr/0001-theme-owns-typography.md`.
 
 ## 2. Token repointing (`assets/css/screen.css`)
 
