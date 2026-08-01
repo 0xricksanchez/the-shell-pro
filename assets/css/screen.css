@@ -1187,7 +1187,7 @@ button:focus-visible,
 }
 
 .article[data-reader-contrast="high"] .article-content {
-    color: #e6edf5;
+    color: #eef4fb;
 }
 
 .article[data-reader-contrast="high"] .article-content strong {
@@ -1195,8 +1195,31 @@ button:focus-visible,
 }
 
 .article[data-reader-contrast="high"] .article-content a {
-    color: color-mix(in srgb, var(--shell-accent) 78%, #ffffff);
+    color: color-mix(in srgb, var(--shell-accent) 72%, #ffffff);
     text-decoration-thickness: .11em;
+}
+
+/* Muted text is the first thing to become unreadable; lift it hardest. */
+.article[data-reader-contrast="high"] .article-content figcaption,
+.article[data-reader-contrast="high"] .article-meta,
+.article[data-reader-contrast="high"] .figure-artifact__hint {
+    color: #b6c4d4;
+}
+
+/* Structure needs to survive too, not just prose. */
+.article[data-reader-contrast="high"] .shell-code-block,
+.article[data-reader-contrast="high"] .article-content figure,
+.article[data-reader-contrast="high"] .article-content table {
+    border-color: var(--shell-border-strong);
+}
+
+.article[data-reader-contrast="high"] .article-content pre,
+.article[data-reader-contrast="high"] .article-content code {
+    color: #e4ecf5;
+}
+
+.article[data-reader-contrast="high"] .article-content .code-line-numbers {
+    color: #8ea3ba;
 }
 
 body.reader-focus .site-nav,
