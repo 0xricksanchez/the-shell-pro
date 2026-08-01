@@ -12,6 +12,16 @@
     --shell-accent: #35e0a1;
 
     /*
+     * Derived from the brand accent, not a separate family: small/normal-size
+     * text sits on a background tinted with that same accent (nav pills, tag
+     * chips, toolbar toggles), which erodes contrast below what "accent vs.
+     * surface" alone suggests. Lifting toward white keeps the accent
+     * recognisable while clearing 4.5:1 for all four supported accents. Used
+     * for TEXT only — borders and fills stay on the raw accent.
+     */
+    --shell-accent-on-surface: color-mix(in srgb, var(--shell-accent) 78%, #ffffff);
+
+    /*
      * Semantic — theme-owned, fixed, never derived from the accent.
      * These encode what kind of claim a research block makes; tying them to
      * branding would let an accent change corrupt the encoding.
@@ -248,7 +258,7 @@ button:focus-visible,
     inset: 0;
     content: "";
     pointer-events: none;
-    background: rgba(17, 24, 34, .88);
+    background: color-mix(in srgb, var(--shell-bg) 88%, transparent);
     backdrop-filter: blur(16px);
 }
 
@@ -321,7 +331,7 @@ button:focus-visible,
 .site-nav__menu a:hover,
 .site-nav__menu .nav-current a {
     border-color: color-mix(in srgb, var(--shell-accent) 45%, transparent);
-    color: var(--shell-accent);
+    color: var(--shell-accent-on-surface);
     background: color-mix(in srgb, var(--shell-accent) 8%, transparent);
 }
 
@@ -378,7 +388,7 @@ button:focus-visible,
     place-items: center;
     border: 1px solid var(--shell-accent);
     color: var(--shell-accent);
-    background: rgba(17, 24, 34, .92);
+    background: color-mix(in srgb, var(--shell-bg) 92%, transparent);
     font-family: var(--shell-font-icon);
     cursor: pointer;
 }
@@ -619,7 +629,7 @@ button:focus-visible,
 
 .lab-index__tags a:hover {
     border-color: var(--shell-accent);
-    color: var(--shell-accent);
+    color: var(--shell-accent-on-surface);
     background: color-mix(in srgb, var(--shell-accent) 6%, transparent);
 }
 
@@ -823,7 +833,7 @@ button:focus-visible,
     flex-direction: column;
     min-width: 0;
     border: 1px solid var(--shell-border);
-    background: linear-gradient(145deg, rgba(32, 45, 61, .6), rgba(24, 34, 47, .6));
+    background: linear-gradient(145deg, color-mix(in srgb, var(--shell-surface-raised) 60%, transparent), color-mix(in srgb, var(--shell-surface) 60%, transparent));
     box-shadow: 0 9px 28px rgba(0, 0, 0, .11);
     transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
 }
@@ -877,7 +887,7 @@ button:focus-visible,
 }
 
 .post-type--field {
-    color: var(--shell-accent);
+    color: var(--shell-accent-on-surface);
     background: color-mix(in srgb, var(--shell-accent) 5.5%, transparent);
 }
 
@@ -1050,7 +1060,7 @@ button:focus-visible,
 .reader-tools__trigger:hover,
 .reader-tools__trigger[aria-expanded="true"] {
     border-color: var(--shell-accent);
-    color: var(--shell-accent);
+    color: var(--shell-accent-on-surface);
     background: color-mix(in srgb, var(--shell-accent) 9%, var(--shell-surface));
 }
 
@@ -1465,7 +1475,7 @@ body.reader-focus .reader-tools__trigger {
     margin: 3.5rem 0;
     padding: 1.25rem clamp(1rem, 3vw, 1.6rem) 1.4rem;
     border: 1px solid color-mix(in srgb, var(--shell-cyan) 42%, var(--shell-border));
-    background: linear-gradient(110deg, rgba(125, 211, 252, .07), rgba(32, 45, 61, .28));
+    background: linear-gradient(110deg, rgba(125, 211, 252, .07), color-mix(in srgb, var(--shell-surface-raised) 28%, transparent));
 }
 
 .research-section::before {
@@ -1587,7 +1597,7 @@ body.reader-focus .reader-tools__trigger {
 
 .shell-code-action:hover {
     border-color: var(--shell-accent);
-    color: var(--shell-accent);
+    color: var(--shell-accent-on-surface);
     background: color-mix(in srgb, var(--shell-accent) 11%, transparent);
 }
 
@@ -1595,7 +1605,7 @@ body.reader-focus .reader-tools__trigger {
    rather than a colour that idle buttons also use. */
 .shell-code-action[aria-pressed="true"] {
     border-color: color-mix(in srgb, var(--shell-accent) 55%, transparent);
-    color: var(--shell-accent);
+    color: var(--shell-accent-on-surface);
     background: color-mix(in srgb, var(--shell-accent) 14%, #152231);
 }
 
@@ -1684,7 +1694,7 @@ body.reader-focus .reader-tools__trigger {
 }
 
 .shell-code-expand:hover {
-    color: var(--shell-accent);
+    color: var(--shell-accent-on-surface);
     background: color-mix(in srgb, var(--shell-accent) 5%, var(--code-surface));
 }
 
@@ -2025,7 +2035,7 @@ body.reader-focus .reader-tools__trigger {
 }
 
 .article-content tr:nth-child(even) {
-    background: rgba(32, 45, 61, .3);
+    background: color-mix(in srgb, var(--shell-surface-raised) 30%, transparent);
 }
 
 .article-content kbd {
@@ -2129,7 +2139,7 @@ body.reader-focus .reader-tools__trigger {
 
 .toc__tab[aria-selected="true"] {
     border-color: color-mix(in srgb, var(--shell-accent) 45%, var(--shell-border));
-    color: var(--shell-accent);
+    color: var(--shell-accent-on-surface);
     background: color-mix(in srgb, var(--shell-accent) 8%, transparent);
 }
 
@@ -2201,7 +2211,7 @@ body.reader-focus .reader-tools__trigger {
 
 .toc a:hover,
 .toc a[aria-current="location"] {
-    color: var(--shell-accent);
+    color: var(--shell-accent-on-surface);
     background: color-mix(in srgb, var(--shell-accent) 7%, transparent);
 }
 
@@ -2276,7 +2286,7 @@ body.reader-focus .reader-tools__trigger {
     margin-bottom: 2.25rem;
     padding: 1.15rem;
     border: 1px solid color-mix(in srgb, var(--shell-cyan) 42%, var(--shell-border));
-    background: linear-gradient(110deg, rgba(125, 211, 252, .07), rgba(32, 45, 61, .28));
+    background: linear-gradient(110deg, rgba(125, 211, 252, .07), color-mix(in srgb, var(--shell-surface-raised) 28%, transparent));
 }
 
 .article-series__heading .eyebrow {
@@ -2352,7 +2362,7 @@ body.reader-focus .reader-tools__trigger {
     margin-bottom: 2.25rem;
     padding: 1.1rem 1.2rem;
     border: 1px solid var(--shell-border);
-    background: rgba(32, 45, 61, .28);
+    background: color-mix(in srgb, var(--shell-surface-raised) 28%, transparent);
     gap: 1rem;
 }
 
@@ -2391,7 +2401,7 @@ body.reader-focus .reader-tools__trigger {
 
 .article-action:hover {
     border-color: var(--shell-accent);
-    color: var(--shell-accent);
+    color: var(--shell-accent-on-surface);
     background: color-mix(in srgb, var(--shell-accent) 6%, transparent);
 }
 
@@ -2435,7 +2445,7 @@ body.reader-focus .reader-tools__trigger {
     gap: .9rem;
     padding: 1rem 1.2rem;
     border: 1px solid var(--shell-border);
-    background: rgba(32, 45, 61, .36);
+    background: color-mix(in srgb, var(--shell-surface-raised) 36%, transparent);
 }
 
 .author-card > img {
@@ -2490,7 +2500,7 @@ body.reader-focus .reader-tools__trigger {
     margin-top: 1rem;
     padding: .85rem 1.2rem;
     border: 1px solid var(--shell-border);
-    background: rgba(32, 45, 61, .32);
+    background: color-mix(in srgb, var(--shell-surface-raised) 32%, transparent);
 }
 
 .article-neighbour {
@@ -2559,7 +2569,7 @@ body.reader-focus .reader-tools__trigger {
     padding: 1rem 1.1rem 1.2rem;
     border: 1px solid var(--shell-border);
     color: var(--shell-text);
-    background: rgba(32, 45, 61, .3);
+    background: color-mix(in srgb, var(--shell-surface-raised) 30%, transparent);
     text-decoration: none;
 }
 
@@ -2608,7 +2618,7 @@ body.reader-focus .reader-tools__trigger {
     border-right: 1px solid var(--shell-border);
     border-bottom: 1px solid var(--shell-border);
     color: var(--shell-text);
-    background: rgba(32, 45, 61, .2);
+    background: color-mix(in srgb, var(--shell-surface-raised) 20%, transparent);
     text-decoration: none;
 }
 
@@ -3001,7 +3011,7 @@ body.reader-focus .reader-tools__trigger {
         padding: .55rem .65rem;
         border: 1px solid var(--shell-border);
         color: var(--shell-text);
-        background: rgba(17, 24, 34, .5);
+        background: color-mix(in srgb, var(--shell-bg) 50%, transparent);
         font-family: var(--shell-mono);
         font-size: .68rem;
         letter-spacing: .04em;
