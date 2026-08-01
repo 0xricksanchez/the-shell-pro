@@ -2137,9 +2137,21 @@ body.reader-focus .reader-tools__trigger {
 }
 
 /*
- * Corner ticks. A framing device, so they belong on rectangular panels — the
- * feature image and the research map — and nowhere else. Not on code blocks: a
- * kernel post carries fifteen.
+ * Corner ticks. A framing device for rectangular panels: the feature image,
+ * the research map, figures (already numbered FIG. NN with a SELECT TO INSPECT
+ * hint — they are panels) and research blocks (the evidence-trail callouts —
+ * hypothesis / method / finding / limitation). Deliberately not on code
+ * blocks: a kernel post carries fifteen, the code workbench already frames
+ * itself with a labelled header, a line-number gutter and a border, and
+ * fifteen more sets of ticks would be noise, not signal. If you're tempted to
+ * add ticks somewhere else, ask first whether that element is a panel a
+ * reader might navigate to, or just decoration.
+ *
+ * :has(.figure-artifact) rather than excluding .kg-code-card / :has(pre)
+ * directly: enhanceFigures() in shell.js already withholds the numbered
+ * artifact bar from code figures, so keying off its presence tracks that
+ * exclusion instead of re-deriving it — one source of truth for "is this
+ * figure a panel."
  *
  * Anchored to .toc, not .article-toc: the latter is the grid-row placeholder
  * that stretches the full height of the article so .toc has somewhere to be
@@ -2150,16 +2162,15 @@ body.reader-focus .reader-tools__trigger {
  * This only holds because .toc itself does not scroll — an absolutely
  * positioned descendant of a scroll container scrolls with its content, which
  * detached both ticks as soon as a long map was scrolled. The overflow lives on
- * .toc__body instead; see the .toc rule below.
+ * .toc__body instead; see the .toc rule below. Figures and .article-feature-image
+ * never scroll internally, so they don't need the same care.
  */
-.article-feature-image {
-    position: relative;
-}
-
 .article-feature-image::before,
 .article-feature-image::after,
 .toc::before,
-.toc::after {
+.toc::after,
+.article-content figure:has(.figure-artifact)::before,
+.article-content figure:has(.figure-artifact)::after {
     position: absolute;
     width: .85rem;
     height: .85rem;
@@ -2169,7 +2180,8 @@ body.reader-focus .reader-tools__trigger {
 }
 
 .article-feature-image::before,
-.toc::before {
+.toc::before,
+.article-content figure:has(.figure-artifact)::before {
     top: 0;
     left: 0;
     border-top-width: 1px;
@@ -2177,11 +2189,35 @@ body.reader-focus .reader-tools__trigger {
 }
 
 .article-feature-image::after,
-.toc::after {
+.toc::after,
+.article-content figure:has(.figure-artifact)::after {
     right: 0;
     bottom: 0;
     border-right-width: 1px;
     border-bottom-width: 1px;
+}
+
+/*
+ * Research blocks only have one free pseudo-element: ::before already renders
+ * the kind label (content: attr(data-research-label)) above the quote, so
+ * both ticks have to come off ::after instead. Four small opaque strips
+ * layered as backgrounds reproduce the same corner brackets a bordered box
+ * would draw — same .85rem reach, same 1px weight, same accent colour — as
+ * one pseudo rather than two.
+ */
+.research-block::after {
+    position: absolute;
+    inset: 0;
+    background-image:
+        linear-gradient(color-mix(in srgb, var(--shell-accent) 55%, transparent), color-mix(in srgb, var(--shell-accent) 55%, transparent)),
+        linear-gradient(color-mix(in srgb, var(--shell-accent) 55%, transparent), color-mix(in srgb, var(--shell-accent) 55%, transparent)),
+        linear-gradient(color-mix(in srgb, var(--shell-accent) 55%, transparent), color-mix(in srgb, var(--shell-accent) 55%, transparent)),
+        linear-gradient(color-mix(in srgb, var(--shell-accent) 55%, transparent), color-mix(in srgb, var(--shell-accent) 55%, transparent));
+    background-repeat: no-repeat;
+    background-position: top left, top left, bottom right, bottom right;
+    background-size: .85rem 1px, 1px .85rem, .85rem 1px, 1px .85rem;
+    content: "";
+    pointer-events: none;
 }
 
 /*
