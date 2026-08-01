@@ -64,17 +64,19 @@
 @font-face {
     font-family: "Space Grotesk Fallback";
     src: local("Helvetica Neue"), local("Arial");
-    size-adjust: 100%;
-    ascent-override: 100%;
-    descent-override: 100%;
+    size-adjust: 100.6%;
+    ascent-override: 95%;
+    descent-override: 25%;
+    line-gap-override: 0%;
 }
 
 @font-face {
     font-family: "Plex Fallback";
     src: local("Helvetica Neue"), local("Arial");
     size-adjust: 100%;
-    ascent-override: 100%;
-    descent-override: 100%;
+    ascent-override: 95%;
+    descent-override: 25%;
+    line-gap-override: 0%;
 }
 
 *,
