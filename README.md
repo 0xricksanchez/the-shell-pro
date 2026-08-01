@@ -18,7 +18,7 @@ A Ghost in the Shell-inspired theme for long-form technical writing on **Ghost 6
 Build the upload zip from theme files only (no preview/dev tooling):
 
 ```sh
-zip -r the-shell-pro.zip package.json README.md LICENSE *.hbs partials assets/css/screen.css assets/js/shell.js
+zip -r the-shell-pro.zip package.json README.md LICENSE *.hbs partials assets/css/screen.css assets/js/shell.js assets/fonts
 ```
 
 Upload it in **Ghost Admin → Settings → Design & branding → Change theme**, then configure title, accent color, navigation, and cover image in Ghost's own Design settings.
@@ -36,6 +36,38 @@ Upload it in **Ghost Admin → Settings → Design & branding → Change theme**
 | `social_custom_url` + `social_custom_label` | One extra platform with a generic link icon |
 
 Re-check custom setting values after uploading a theme version that changes the settings list — Ghost may reset them.
+
+## Changing the fonts
+
+The theme owns its typography — Ghost's **Design & branding → Typography**
+setting is deliberately not consulted, because the type scale is tuned to Space
+Grotesk's metrics and an arbitrary substitution would invalidate it. See
+`docs/adr/0001-theme-owns-typography.md`.
+
+To change a face:
+
+1. Drop a `woff2` into `assets/fonts/`.
+2. Update the matching `@font-face` block at the top of `assets/css/screen.css`.
+3. Update `--shell-font-display` or `--shell-font-text` in `:root`.
+4. If you changed the display face, update the `<link rel="preload">` in
+   `default.hbs`.
+5. Re-measure the paired `*-Fallback` `@font-face` metrics, and expect to retune
+   the heading scale — a narrower or wider face will not sit correctly at the
+   current sizes and tracking.
+
+Monospace is intentionally a system stack and takes no webfont.
+
+**Supported accent colours.** Set the accent in Ghost Admin. These four are
+designed and contrast-tested against the theme background:
+
+| Name | Value |
+| --- | --- |
+| Signal green | `#35e0a1` |
+| Alert red | `#dc4474` |
+| Ice blue | `#57b6ff` |
+| Amber | `#ff9448` |
+
+Other colours will render but are untested and may fail contrast.
 
 ## Content conventions
 
@@ -66,6 +98,10 @@ npm run check:preview             # headless-Chromium suite: ~180 assertions on 
 ```
 
 Repeat the `up --build` and seed steps after editing theme files (the preview bakes the theme into its image). `npm exec --yes --package=gscan -- gscan .` runs Ghost's compatibility scanner. Release zips and `.scratch/` notes are intentionally untracked.
+
+`npm run check:preview` drives that separate, already-deployed Ghost instance — it serves whatever theme was last uploaded there, not the working tree, so it cannot verify local edits. To check working-tree changes directly, `npm run serve:local` serves the theme as-is with real production articles mirrored in, at `http://127.0.0.1:8791`.
+
+See `CONTEXT.md` for the theme's reader-facing vocabulary and `docs/adr/` for the design decisions behind it.
 
 ## License
 
