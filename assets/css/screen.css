@@ -1298,8 +1298,8 @@ body.reader-focus .reader-tools__trigger {
 }
 
 .article-header h1 {
-    font-size: clamp(2.1rem, 1.35rem + 3.2vw, 3.6rem);
-    letter-spacing: -.015em;
+    font-size: clamp(1.85rem, 1.15rem + 2.75vw, 3.1rem);
+    letter-spacing: -.02em;
 }
 
 .article-header--long-title h1 {
