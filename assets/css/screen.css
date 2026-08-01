@@ -252,6 +252,7 @@ button:focus-visible,
     min-width: 0;
     gap: .6rem;
     color: var(--shell-text);
+    font-family: var(--shell-font-display);
     font-size: .82rem;
     font-weight: 700;
     letter-spacing: .045em;
@@ -271,6 +272,7 @@ button:focus-visible,
 
 .site-brand__mark {
     color: var(--shell-accent);
+    font-family: var(--shell-font-icon);
     font-size: 1.2rem;
     line-height: 1;
 }
@@ -319,6 +321,7 @@ button:focus-visible,
     border: 1px solid var(--shell-border);
     color: var(--shell-text);
     background: var(--shell-surface);
+    font-family: var(--shell-font-icon);
     cursor: pointer;
 }
 
@@ -338,6 +341,7 @@ button:focus-visible,
     border: 1px solid var(--shell-border);
     color: var(--shell-muted);
     background: transparent;
+    font-family: var(--shell-font-icon);
     cursor: pointer;
 }
 
@@ -359,6 +363,7 @@ button:focus-visible,
     border: 1px solid var(--shell-accent);
     color: var(--shell-accent);
     background: rgba(17, 24, 34, .92);
+    font-family: var(--shell-font-icon);
     cursor: pointer;
 }
 
@@ -377,6 +382,7 @@ button:focus-visible,
     border: 1px solid var(--shell-accent);
     color: #07130f;
     background: var(--shell-accent);
+    font-family: var(--shell-font-display);
     font-size: .76rem;
     font-weight: 700;
     letter-spacing: .055em;
@@ -484,6 +490,7 @@ button:focus-visible,
 .prompt {
     margin: 0 0 .75rem;
     color: var(--shell-magenta);
+    font-family: var(--shell-font-display);
     font-size: .72rem;
     font-weight: 700;
     letter-spacing: .12em;
@@ -588,6 +595,7 @@ button:focus-visible,
     padding: .3rem .5rem;
     border: 1px solid color-mix(in srgb, var(--shell-border) 80%, transparent);
     color: var(--shell-text);
+    font-family: var(--shell-font-display);
     font-size: .7rem;
     line-height: 1.15;
     text-decoration: none;
@@ -601,6 +609,7 @@ button:focus-visible,
 
 .lab-index__tags span {
     color: var(--shell-muted);
+    font-family: var(--shell-mono);
     font-size: .64rem;
 }
 
@@ -616,6 +625,7 @@ button:focus-visible,
 .breadcrumbs {
     margin: 0 0 1rem;
     color: var(--shell-muted);
+    font-family: var(--shell-font-display);
     font-size: .66rem;
     letter-spacing: .045em;
     line-height: 1.4;
@@ -842,6 +852,7 @@ button:focus-visible,
     border: 1px solid color-mix(in srgb, var(--shell-border) 82%, transparent);
     color: var(--shell-cyan);
     background: rgba(125, 211, 252, .055);
+    font-family: var(--shell-font-display);
     font-size: .63rem;
     font-weight: 700;
     letter-spacing: .08em;
@@ -880,6 +891,7 @@ button:focus-visible,
     align-items: center;
     gap: .45rem;
     color: var(--shell-muted);
+    font-family: var(--shell-mono);
     font-size: .73rem;
     line-height: 1.4;
 }
@@ -916,6 +928,7 @@ button:focus-visible,
 .post-card__read {
     margin-top: auto;
     color: var(--shell-accent);
+    font-family: var(--shell-font-display);
     font-size: .75rem;
     font-weight: 700;
     letter-spacing: .04em;
@@ -1123,6 +1136,7 @@ button:focus-visible,
 .reader-setting > p {
     margin: 0;
     color: var(--shell-muted);
+    font-family: var(--shell-font-display);
     font-size: .68rem;
     font-weight: 700;
     letter-spacing: .07em;
@@ -1392,6 +1406,7 @@ body.reader-focus .reader-tools__trigger {
     margin-bottom: .65rem;
     color: var(--research-tone);
     content: attr(data-research-label);
+    font-family: var(--shell-font-display);
     font-size: .66rem;
     font-weight: 700;
     letter-spacing: .09em;
@@ -1439,6 +1454,7 @@ body.reader-focus .reader-tools__trigger {
     margin-bottom: .75rem;
     color: var(--shell-yellow);
     content: "evidence trail";
+    font-family: var(--shell-font-display);
     font-size: .66rem;
     font-weight: 700;
     letter-spacing: .1em;
@@ -1488,6 +1504,7 @@ body.reader-focus .reader-tools__trigger {
     padding: .25rem .55rem .25rem .85rem;
     border-bottom: 1px solid var(--code-rule);
     color: #8ba1b8;
+    font-family: var(--shell-font-display);
     font-size: .68rem;
     letter-spacing: .08em;
     text-transform: uppercase;
@@ -1504,6 +1521,7 @@ body.reader-focus .reader-tools__trigger {
 .shell-code-toolbar__file {
     overflow: hidden;
     color: var(--shell-text);
+    font-family: var(--shell-mono);
     font-weight: 700;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -1845,10 +1863,12 @@ body.reader-focus .reader-tools__trigger {
 
 .figure-artifact__number {
     color: var(--shell-accent);
+    font-family: var(--shell-font-display);
 }
 
 .figure-artifact__hint {
     color: var(--shell-muted);
+    font-family: var(--shell-font-display);
     font-weight: 400;
 }
 
@@ -2019,6 +2039,7 @@ body.reader-focus .reader-tools__trigger {
 .toc__title {
     margin: 0 0 .5rem;
     color: var(--shell-yellow);
+    font-family: var(--shell-font-display);
     font-size: .68rem;
     font-weight: 700;
     letter-spacing: .09em;
@@ -2028,6 +2049,7 @@ body.reader-focus .reader-tools__trigger {
 .toc__count {
     margin: -.25rem 0 .65rem;
     color: var(--shell-muted);
+    font-family: var(--shell-mono);
     font-size: .62rem;
     letter-spacing: .06em;
     text-transform: uppercase;
@@ -2144,6 +2166,7 @@ body.reader-focus .reader-tools__trigger {
 .toc__item--level-1 > a,
 .toc__item--level-2 > a {
     color: #aebdcb;
+    font-family: var(--shell-font-display);
     font-weight: 700;
 }
 
@@ -2191,6 +2214,7 @@ body.reader-focus .reader-tools__trigger {
 
 .toc__artifact-kind {
     color: var(--shell-cyan);
+    font-family: var(--shell-font-display);
     font-size: .57rem;
     font-weight: 700;
     letter-spacing: .075em;
@@ -2337,6 +2361,7 @@ body.reader-focus .reader-tools__trigger {
     border: 1px solid var(--shell-border);
     color: var(--shell-text);
     background: transparent;
+    font-family: var(--shell-font-display);
     font-size: .65rem;
     font-weight: 700;
     letter-spacing: .055em;
@@ -2461,6 +2486,7 @@ body.reader-focus .reader-tools__trigger {
 
 .article-neighbour > span {
     color: var(--shell-muted);
+    font-family: var(--shell-font-icon);
     font-size: .64rem;
     letter-spacing: .08em;
     text-transform: uppercase;
@@ -2526,6 +2552,7 @@ body.reader-focus .reader-tools__trigger {
 
 .related-post > span {
     color: var(--shell-muted);
+    font-family: var(--shell-mono);
     font-size: .66rem;
     font-weight: 700;
     letter-spacing: .06em;
@@ -2573,6 +2600,7 @@ body.reader-focus .reader-tools__trigger {
 
 .topic-card__count {
     color: var(--shell-cyan);
+    font-family: var(--shell-mono);
     font-size: .66rem;
     font-weight: 700;
     letter-spacing: .07em;
@@ -2695,6 +2723,10 @@ body.reader-focus .reader-tools__trigger {
     border-radius: 50%;
     background: var(--shell-accent);
     box-shadow: 0 0 .6rem color-mix(in srgb, var(--shell-accent) 75%, transparent);
+}
+
+.site-footer__transmission time {
+    font-family: var(--shell-mono);
 }
 
 .site-footer__identity .site-footer__transmission a {

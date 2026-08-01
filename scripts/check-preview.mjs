@@ -803,6 +803,30 @@ async function inspectTypeRoles() {
         'heading hierarchy holds at every reader text size',
         JSON.stringify(hierarchy)
     );
+
+    const icons = await evaluate(`(async () => {
+        await document.fonts.ready;
+        const probe = (ch) => {
+            const span = document.createElement('span');
+            span.textContent = ch;
+            span.style.cssText = 'position:absolute;visibility:hidden;font-size:64px;'
+                + 'font-family:var(--shell-font-icon)';
+            document.body.appendChild(span);
+            const width = span.getBoundingClientRect().width;
+            span.remove();
+            return width;
+        };
+        const notdef = probe('\\uFFFF');
+        return {
+            notdef,
+            glyphs: ['▣', '☰', '⌕', '←', '→'].map((c) => [c, probe(c)])
+        };
+    })()`);
+    check(
+        icons.glyphs.every(([, w]) => w > 0 && Math.abs(w - icons.notdef) > 0.5),
+        'iconographic glyphs render as symbols rather than tofu',
+        JSON.stringify(icons)
+    );
 }
 
 async function inspectAccessibilityTree() {
