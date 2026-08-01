@@ -845,8 +845,22 @@
         title.textContent = sections.length && artifacts.length
             ? 'Research map'
             : (sections.length ? 'On this page' : 'Artifacts');
+        /*
+         * Two independent readings share this line, each with its own node:
+         * countLabel names the panel currently on screen and is owned by
+         * setView; the remainder tracks scroll position and is owned by
+         * setupReadingProgress. They used to take turns writing one node, so
+         * whichever fired last contradicted the panel the reader was looking at.
+         */
         var count = doc.createElement('p');
         count.className = 'toc__count';
+        var countLabel = doc.createElement('span');
+        countLabel.className = 'toc__count-label';
+        var remaining = doc.createElement('span');
+        remaining.className = 'toc__remaining';
+        remaining.dataset.readingRemaining = '';
+        remaining.hidden = true;
+        count.append(countLabel, remaining);
         title.insertAdjacentElement('afterend', count);
 
         var toggle = doc.createElement('button');
@@ -948,7 +962,7 @@
                     tab.tabIndex = selected ? 0 : -1;
                 }
             });
-            count.textContent = currentDescription();
+            countLabel.textContent = currentDescription();
             setTocExpanded(toc.classList.contains('toc--expanded'));
             viewNames.forEach(function (viewName) {
                 if (viewName !== name) {
@@ -981,13 +995,15 @@
             if (!active || window.matchMedia('(max-width: 900px)').matches || !active.offsetParent) {
                 return;
             }
-            var tocBox = toc.getBoundingClientRect();
+            /* body, not toc: the overflow lives on .toc__body so that .toc can
+               stay a still frame for its corner ticks and progress spine. */
+            var viewport = body.getBoundingClientRect();
             var activeBox = active.getBoundingClientRect();
             var breathingRoom = 4;
-            if (activeBox.top < tocBox.top + breathingRoom) {
-                toc.scrollTop += activeBox.top - tocBox.top - breathingRoom;
-            } else if (activeBox.bottom > tocBox.bottom - breathingRoom) {
-                toc.scrollTop += activeBox.bottom - tocBox.bottom + breathingRoom;
+            if (activeBox.top < viewport.top + breathingRoom) {
+                body.scrollTop += activeBox.top - viewport.top - breathingRoom;
+            } else if (activeBox.bottom > viewport.bottom - breathingRoom) {
+                body.scrollTop += activeBox.bottom - viewport.bottom + breathingRoom;
             }
         }
 
@@ -1462,34 +1478,38 @@
 
     /*
      * Reading progress lives on the research map, the component that already
-     * answers "where am I". The map's left border fills as a spine, and the
-     * waypoint count becomes time remaining once reading is under way — a
-     * question a percentage bar cannot answer.
+     * answers "where am I". The map's left border fills as a spine, and time
+     * remaining sits beside the waypoint count — a question a percentage bar
+     * cannot answer.
+     *
+     * It writes only to its own node. Sharing .toc__count with the panel label
+     * meant the two overwrote each other, so the map could read "36 min left"
+     * with the Artifacts panel open. When the reading time cannot be parsed the
+     * node simply stays hidden: no "NaN min left", and no empty slot either.
      */
     function setupReadingProgress() {
         var map = doc.querySelector('.toc');
         var article = doc.querySelector('.article');
-        var count = doc.querySelector('.toc__count');
+        var remaining = doc.querySelector('[data-reading-remaining]');
         if (!map || !article) {
             return;
         }
-        var totalMinutes = parseInt((doc.querySelector('.article-meta') || {}).textContent
-            ? (doc.querySelector('.article-meta').textContent.match(/(\d+)\s*min/) || [])[1]
-            : '', 10);
-        var originalCount = count ? count.textContent : '';
-        var lastText = originalCount;
+        var meta = doc.querySelector('.article-meta');
+        var totalMinutes = parseInt(((meta && meta.textContent.match(/(\d+)\s*min/)) || [])[1] || '', 10);
+        var lastText = '';
         var update = function () {
             var start = article.offsetTop - 112;
             var distance = Math.max(article.offsetHeight - window.innerHeight + 224, 1);
             var ratio = Math.min(1, Math.max(0, (window.scrollY - start) / distance));
             map.style.setProperty('--toc-progress', (ratio * 100).toFixed(2) + '%');
-            if (count && totalMinutes > 0) {
+            if (remaining && totalMinutes > 0) {
                 var left = Math.ceil(totalMinutes * (1 - ratio));
                 var text = ratio < 0.02 || left < 1
-                    ? originalCount
+                    ? ''
                     : left + ' min left';
                 if (text !== lastText) {
-                    count.textContent = text;
+                    remaining.textContent = text;
+                    remaining.hidden = !text;
                     lastText = text;
                 }
             }

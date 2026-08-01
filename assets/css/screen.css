@@ -73,10 +73,18 @@
     font-display: swap;
 }
 
+/*
+ * 400 700, not 400 600. `<strong>` in prose and `<th>` in tables both ask for
+ * 700; a 600 upper bound clamps them, so bold emphasis and table headers came
+ * out visibly weaker than the monospace they replaced. The vendored file is
+ * Google's full latin variable slice — the same bytes are served for
+ * `wght@400..600` and `wght@400..700`, only the descriptor differs — so the
+ * axis end was always present and only this line was withholding it.
+ */
 @font-face {
     font-family: "IBM Plex Sans";
     src: url("../fonts/ibm-plex-sans-var.woff2") format("woff2");
-    font-weight: 400 600;
+    font-weight: 400 700;
     font-style: normal;
     font-display: swap;
 }
@@ -1104,6 +1112,7 @@ button:focus-visible,
 .reader-dialog__header h2 {
     margin: 0;
     color: var(--shell-text);
+    font-family: var(--shell-font-display);
     font-size: 1.08rem;
     line-height: 1.2;
 }
@@ -2084,6 +2093,11 @@ body.reader-focus .reader-tools__trigger {
  * sticky within, not the panel a reader sees. Ticking .article-toc puts the
  * corners at the top and bottom of the whole article instead of the bordered
  * box on screen.
+ *
+ * This only holds because .toc itself does not scroll — an absolutely
+ * positioned descendant of a scroll container scrolls with its content, which
+ * detached both ticks as soon as a long map was scrolled. The overflow lives on
+ * .toc__body instead; see the .toc rule below.
  */
 .article-feature-image {
     position: relative;
@@ -2117,13 +2131,20 @@ body.reader-focus .reader-tools__trigger {
     border-bottom-width: 1px;
 }
 
+/*
+ * A stable frame, not a scroll container. .toc owns the sticky box, the border,
+ * the progress spine and the corner ticks, all of which must hold still; the
+ * waypoint list scrolls inside .toc__body. Column flex is what hands .toc__body
+ * the leftover height without anyone having to measure the header.
+ */
 .toc {
     position: sticky;
     top: 6rem;
+    display: flex;
     max-height: calc(100vh - 7.5rem);
     max-height: calc(100dvh - 7.5rem);
+    flex-direction: column;
     padding: .85rem 0 .85rem .95rem;
-    overflow: auto;
     border-left: 1px solid var(--shell-border);
 }
 
@@ -2146,12 +2167,35 @@ body.reader-focus .reader-tools__trigger {
     text-transform: uppercase;
 }
 
+/*
+ * Time remaining shares the count's line but not its node. The two readings
+ * used to take turns writing .toc__count, so the label contradicted the panel
+ * on screen — "58 artifacts" became "36 min left" on the next scroll notch, and
+ * switching tabs mid-article wiped the time. Each now owns an element.
+ *
+ * The separator inherits --shell-muted rather than being dimmed: at .62rem a
+ * 55%-alpha dot measured 2.62:1 against the page, under the 4.5:1 floor. The
+ * margins do the separating; the colour does not have to.
+ */
+.toc__remaining::before {
+    margin: 0 .34rem;
+    content: "·";
+}
+
+.toc__remaining[hidden] {
+    display: none;
+}
+
 .toc__toggle {
     display: none;
 }
 
 .toc__body {
     min-width: 0;
+    /* min-height: 0 lets the flex item shrink past its content so the overflow
+       is its own, rather than pushing .toc past its max-height. */
+    min-height: 0;
+    overflow: auto;
 }
 
 /*
@@ -2358,6 +2402,7 @@ body.reader-focus .reader-tools__trigger {
 .article-series__heading h2 {
     margin: 0;
     color: var(--shell-text);
+    font-family: var(--shell-font-display);
     font-size: 1rem;
 }
 
@@ -2519,6 +2564,7 @@ body.reader-focus .reader-tools__trigger {
 
 .author-card h2 {
     margin: 0;
+    font-family: var(--shell-font-display);
     font-size: .9rem;
 }
 
@@ -2575,13 +2621,22 @@ body.reader-focus .reader-tools__trigger {
     text-decoration: none;
 }
 
+/*
+ * "Prev" and "Next" are words a reader reads, so they take the display face
+ * like every other frame label. Only the arrow is iconographic, and it keeps
+ * the system symbol stack because neither webfont carries ← or →.
+ */
 .article-neighbour > span {
     color: var(--shell-muted);
-    font-family: var(--shell-font-icon);
+    font-family: var(--shell-font-display);
     font-size: .64rem;
     letter-spacing: .08em;
     text-transform: uppercase;
     white-space: nowrap;
+}
+
+.article-neighbour__arrow {
+    font-family: var(--shell-font-icon);
 }
 
 .article-neighbour > strong {
@@ -2616,6 +2671,7 @@ body.reader-focus .reader-tools__trigger {
 
 .related-posts__heading h2 {
     margin: 0 0 .9rem;
+    font-family: var(--shell-font-display);
     font-size: 1.1rem;
 }
 

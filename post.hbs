@@ -108,7 +108,7 @@
                 <div class="article-neighbours__strip">
                     {{#prev_post}}
                         <a class="article-neighbour article-neighbour--previous" href="{{url}}">
-                            <span>← Prev</span>
+                            <span><span class="article-neighbour__arrow">←</span> Prev</span>
                             <strong>{{title}}</strong>
                         </a>
                     {{/prev_post}}
@@ -116,7 +116,7 @@
                     {{#next_post}}
                         <a class="article-neighbour article-neighbour--next" href="{{url}}">
                             <strong>{{title}}</strong>
-                            <span>Next →</span>
+                            <span>Next <span class="article-neighbour__arrow">→</span></span>
                         </a>
                     {{/next_post}}
                 </div>
