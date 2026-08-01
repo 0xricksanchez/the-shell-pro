@@ -13,8 +13,15 @@
     --shell-danger: #ff7b88;
     --shell-shadow: 0 18px 60px rgba(0, 0, 0, .28);
     --shell-mono: ui-monospace, "Cascadia Code", "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-    --shell-body: var(--gh-font-body, var(--shell-mono));
-    --shell-heading: var(--gh-font-heading, var(--shell-mono));
+    /*
+     * The theme owns its typography; Ghost's Design & branding font settings are
+     * deliberately not consulted. See docs/adr/0001-theme-owns-typography.md.
+     */
+    --shell-font-display: "Space Grotesk", "Space Grotesk Fallback", system-ui, sans-serif;
+    --shell-font-text: "IBM Plex Sans", "Plex Fallback", system-ui, sans-serif;
+    --shell-font-icon: "Apple Symbols", "Segoe UI Symbol", "Noto Sans Symbols 2", system-ui, sans-serif;
+    --shell-body: var(--shell-font-text);
+    --shell-heading: var(--shell-font-display);
 
     /* Code-block geometry. The preview line count is mirrored into the expand
        button label by shell.js, which reads --code-preview-lines at runtime, so
@@ -25,6 +32,49 @@
     --code-pad-inline: 1.25rem;
     --code-surface: #0b1118;
     --code-rule: #27394d;
+}
+
+/*
+ * Identity faces. Both are variable fonts carrying their full weight range in a
+ * single file, latin slice only. Iconographic characters (▣ ☰ ⌕ ← → ⇾) are NOT
+ * in these files and must never be set in them — see --shell-font-icon.
+ */
+@font-face {
+    font-family: "Space Grotesk";
+    src: url("../fonts/space-grotesk-var.woff2") format("woff2");
+    font-weight: 500 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "IBM Plex Sans";
+    src: url("../fonts/ibm-plex-sans-var.woff2") format("woff2");
+    font-weight: 400 600;
+    font-style: normal;
+    font-display: swap;
+}
+
+/*
+ * Metric-matched fallbacks. Without these, `swap` reflows an entire 40-minute
+ * article when the real face arrives and displaces a reader mid-scroll. These
+ * overrides make the fallback occupy near-identical space, so the swap changes
+ * letterform shape without changing layout. Values are measured in Task 3.
+ */
+@font-face {
+    font-family: "Space Grotesk Fallback";
+    src: local("Helvetica Neue"), local("Arial");
+    size-adjust: 100%;
+    ascent-override: 100%;
+    descent-override: 100%;
+}
+
+@font-face {
+    font-family: "Plex Fallback";
+    src: local("Helvetica Neue"), local("Arial");
+    size-adjust: 100%;
+    ascent-override: 100%;
+    descent-override: 100%;
 }
 
 *,

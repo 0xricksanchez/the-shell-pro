@@ -750,6 +750,33 @@ async function inspectHighlighterFailureFallback() {
     }
 }
 
+async function inspectTypeRoles() {
+    await navigate('/tracing-the-edge-200ms-feedback-loop/');
+    const roles = await evaluate(`(async () => {
+        await document.fonts.ready;
+        const family = (el) => el ? getComputedStyle(el).fontFamily : '';
+        const prose = document.querySelector('.article-content p');
+        const code = document.querySelector('.shell-code-block pre');
+        const heading = document.querySelector('.article-content h2');
+        return {
+            prose: family(prose),
+            code: family(code),
+            heading: family(heading),
+            displayLoaded: document.fonts.check('700 1rem "Space Grotesk"'),
+            textLoaded: document.fonts.check('400 1rem "IBM Plex Sans"')
+        };
+    })()`);
+    check(
+        /Space Grotesk/.test(roles.heading)
+            && /IBM Plex Sans/.test(roles.prose)
+            && !/IBM Plex Sans|Space Grotesk/.test(roles.code)
+            && roles.displayLoaded
+            && roles.textLoaded,
+        'prose, headings and code resolve to three distinct typefaces',
+        JSON.stringify(roles)
+    );
+}
+
 async function inspectAccessibilityTree() {
     await navigate('/tracing-the-edge-200ms-feedback-loop/');
     const tree = await client.send('Accessibility.getFullAXTree');
@@ -1938,6 +1965,7 @@ async function main() {
     await inspectUnknownCodeFallback();
     await inspectUntypedCodeLabel();
     await inspectHighlighterFailureFallback();
+    await inspectTypeRoles();
     await inspectAccessibilityTree();
     await inspectResponsiveBoundaries();
     await inspectResponsiveCodeTypography();
