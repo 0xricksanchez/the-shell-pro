@@ -5,8 +5,28 @@
     --shell-surface-raised: #202d3d;
     --shell-text: #d5dce7;
     --shell-muted: #8492a5;
+    /*
+     * One step below --shell-muted for de-emphasised small text: deep
+     * waypoints in the research map, the "filed under" label. Thinning muted
+     * with transparent is what took both under AA — at 82% the deep waypoints
+     * measured 4.21:1 against the page and 4.02:1 against the mobile map's own
+     * #141e2a panel; the label measured 3.89:1 at 80%. 92% keeps a visible
+     * step below --shell-muted and clears 4.5:1 on all three (4.96:1, 4.71:1,
+     * 4.71:1). Anything thinner than 90% fails on the mobile panel.
+     */
+    --shell-muted-dim: color-mix(in srgb, var(--shell-muted) 92%, transparent);
     --shell-border: #304257;
     --shell-border-strong: #4a6076;
+    /*
+     * The border the reader's high-contrast mode swaps in. --shell-border-strong
+     * is tuned against the page background and loses on the surfaces it has to
+     * survive there: against a <th>'s --shell-surface-raised it measures
+     * 2.14:1, against an even row 2.57:1, against an odd one 2.74:1 — all under
+     * the 3:1 floor for a UI border, and all three appear 24 times over on a
+     * table-dense article. This clears the floor against the lightest of them
+     * (3.51:1 on a <th>, 4.20:1 even, 4.48:1 odd).
+     */
+    --shell-border-contrast: #6b8299;
     /*
      * Opaque panel background for anything sticky over scrolling content
      * without a backdrop-filter: the mobile research map, its sticky tab bar,
@@ -30,16 +50,29 @@
     --shell-accent-on-surface: color-mix(in srgb, var(--shell-accent) 78%, #ffffff);
 
     /*
-     * Prose links fall through to the base `a` rule below and sit on --shell-bg.
-     * The raw accent only clears WCAG AA there for some of the four supported
-     * accents — the pink accent measures 4.35:1 against #111822. A deepened
-     * background previously papered over this (4.77:1 against #080c13, but
-     * tiring in a dark room for no reason the reader can see). Lifting the
-     * link colour toward white is the correct lever: every accent clears
-     * 4.5:1 against #111822 and the fix tracks whatever accent the author
-     * sets instead of hard-coding a colour.
+     * The accent used as TEXT on the structural background ramp, where nothing
+     * tints the backdrop toward the accent: prose links, chrome labels, the
+     * artifact number on a figure, quiet buttons. The raw accent only clears
+     * WCAG AA there for some of the four supported accents — the pink accent
+     * measures 4.35:1 against --shell-bg, 4.48:1 on a figure, 3.91:1 on
+     * --shell-surface and 3.79:1 on a post card. A deepened background
+     * previously papered over this (4.77:1 against #080c13, but tiring in a
+     * dark room for no reason the reader can see). Lifting toward white is the
+     * correct lever: at 85% every supported accent clears 4.5:1 on every one
+     * of those backgrounds (worst case pink on a post card, 4.62:1) and the
+     * fix tracks whatever accent the author sets instead of hard-coding a
+     * colour. TEXT only — borders and fills stay on the raw accent, which
+     * needs 3:1, not 4.5:1, and which the raw accent already clears.
      */
-    --shell-link: color-mix(in srgb, var(--shell-accent) 85%, #ffffff);
+    --shell-accent-text: color-mix(in srgb, var(--shell-accent) 85%, #ffffff);
+
+    /*
+     * Prose links are one instance of that problem, not a separate one, so
+     * they take the same lever rather than a second definition that could
+     * drift from it. The name survives because the reader's high-contrast mode
+     * re-mixes prose links specifically and nothing else on this list.
+     */
+    --shell-link: var(--shell-accent-text);
 
     /*
      * Semantic — theme-owned, fixed, never derived from the accent.
@@ -430,8 +463,10 @@ button:focus-visible,
     height: 2.4rem;
     padding: 0;
     place-items: center;
+    /* Border on the raw accent (a UI border needs 3:1), glyph on the lifted
+       one (a glyph is text and needs 4.5:1). */
     border: 1px solid var(--shell-accent);
-    color: var(--shell-accent);
+    color: var(--shell-accent-text);
     background: color-mix(in srgb, var(--shell-bg) 92%, transparent);
     font-family: var(--shell-font-icon);
     cursor: pointer;
@@ -468,7 +503,7 @@ button:focus-visible,
 }
 
 .button--quiet {
-    color: var(--shell-accent);
+    color: var(--shell-accent-text);
     background: transparent;
 }
 
@@ -997,7 +1032,7 @@ button:focus-visible,
 
 .post-card__read {
     margin-top: auto;
-    color: var(--shell-accent);
+    color: var(--shell-accent-text);
     font-family: var(--shell-font-display);
     font-size: .75rem;
     font-weight: 700;
@@ -1331,12 +1366,17 @@ button:focus-visible,
     color: #b6c4d4;
 }
 
-/* Structure needs to survive too, not just prose. */
+/*
+ * Structure needs to survive too, not just prose — and it has to survive
+ * against the surface it is drawn on, not against the page. A table's own
+ * fills are the lightest thing a border here meets, so --shell-border-strong
+ * (correct against the page) is not enough: see --shell-border-contrast.
+ */
 .article[data-reader-contrast="high"] .shell-code-block,
 .article[data-reader-contrast="high"] .article-content figure,
 .article[data-reader-contrast="high"] .article-content th,
 .article[data-reader-contrast="high"] .article-content td {
-    border-color: var(--shell-border-strong);
+    border-color: var(--shell-border-contrast);
 }
 
 .article[data-reader-contrast="high"] .article-content pre,
@@ -2044,7 +2084,7 @@ body.reader-focus .reader-tools__trigger {
 }
 
 .figure-artifact__number {
-    color: var(--shell-accent);
+    color: var(--shell-accent-text);
     /* "Fig. 04" is a value, not a label — a one-character difference changes
        what it means, which CONTEXT.md classes parsed, not scanned. */
     font-family: var(--shell-mono);
@@ -2502,7 +2542,7 @@ body.reader-focus .reader-tools__trigger {
 
 .toc__item--level-4 > a,
 .toc__item--level-5 > a {
-    color: color-mix(in srgb, var(--shell-muted) 82%, transparent);
+    color: var(--shell-muted-dim);
     font-size: .66rem;
 }
 
@@ -2558,7 +2598,7 @@ body.reader-focus .reader-tools__trigger {
 }
 
 .toc__artifact-item--code .toc__artifact-kind {
-    color: var(--shell-accent);
+    color: var(--shell-accent-text);
 }
 
 .toc__artifact-item--table .toc__artifact-kind,
@@ -2712,7 +2752,7 @@ body.reader-focus .reader-tools__trigger {
 }
 
 .article-actions__tags > span {
-    color: color-mix(in srgb, var(--shell-muted) 80%, transparent);
+    color: var(--shell-muted-dim);
     font-size: .64rem;
     letter-spacing: .08em;
     text-transform: uppercase;
