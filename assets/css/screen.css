@@ -412,10 +412,14 @@ button:focus-visible,
     background: color-mix(in srgb, var(--shell-accent) 8%, transparent);
 }
 
+/* The mark is iconographic and U+2197 is outside the Latin slice the three
+   webfonts are subset to, so without this it resolves through the fallback
+   face to Menlo rather than to a face chosen for symbol coverage. */
 .site-nav__menu .nav-external a::after {
     margin-left: .28rem;
     color: var(--shell-cyan);
     content: "↗";
+    font-family: var(--shell-font-icon);
 }
 
 .site-nav__toggle {
@@ -1041,8 +1045,11 @@ button:focus-visible,
     text-transform: uppercase;
 }
 
+/* Ghost's post-card partial already gives the → its own aria-hidden span, so
+   the arrow takes the symbol stack while the label around it stays scanned. */
 .post-card__read span {
     display: inline-block;
+    font-family: var(--shell-font-icon);
     transition: transform .16s ease;
 }
 
@@ -1925,9 +1932,16 @@ body.reader-focus .reader-tools__trigger {
     outline-offset: -3px;
 }
 
+/*
+ * Only the arrow moves to the symbol stack. .shell-code-expand's own label is
+ * a line count and keeps var(--shell-mono); this pseudo-element is a separate
+ * node, so the disclosure mark can be iconographic without the rule above it
+ * losing the mono pin. U+2193/U+2191 are outside the webfonts' Latin slice.
+ */
 .shell-code-expand::after {
     content: "↓";
     color: var(--shell-cyan);
+    font-family: var(--shell-font-icon);
     font-size: .82rem;
     line-height: 1;
 }
@@ -3239,10 +3253,12 @@ body.reader-focus .reader-tools__trigger {
     color: var(--shell-accent);
 }
 
+/* Same mark, same reason as the header's — see .site-nav__menu above. */
 .footer-nav__links .nav-external a::after {
     margin-left: .28rem;
     color: var(--shell-cyan);
     content: "↗";
+    font-family: var(--shell-font-icon);
 }
 
 .site-footer__rail {
