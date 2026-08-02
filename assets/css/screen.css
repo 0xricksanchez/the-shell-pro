@@ -64,7 +64,7 @@
      * now resolve to Neon instead of the system stack, which is kept here as
      * the fallback list so a machine without Neon still gets a real monospace.
      */
-    --shell-mono: "Monaspace Neon", ui-monospace, "Cascadia Code", "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    --shell-mono: "Monaspace Neon", "Monaspace Neon Fallback", ui-monospace, "Cascadia Code", "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
     /*
      * The theme owns its typography; Ghost's Design & branding font settings are
      * deliberately not consulted. See docs/adr/0001-theme-owns-typography.md.
@@ -135,7 +135,22 @@
  */
 @font-face {
     font-family: "Monaspace Krypton Fallback";
-    src: local("Menlo"), local("Consolas"), local("DejaVu Sans Mono");
+    src: local("Menlo-Regular"), local("Consolas"), local("DejaVuSansMono"), local("Monaco");
+    size-adjust: 103%;
+    ascent-override: 95%;
+    descent-override: 25%;
+    line-gap-override: 0%;
+}
+
+/*
+ * local() matches PostScript names, not family names: local("Menlo") fails
+ * in Chrome while local("Menlo-Regular") resolves. Getting this wrong puts
+ * the face into error state silently -- the page still renders, it just
+ * loses the metric matching and reflows on swap.
+ */
+@font-face {
+    font-family: "Monaspace Neon Fallback";
+    src: local("Menlo-Regular"), local("Consolas"), local("DejaVuSansMono"), local("Monaco");
     size-adjust: 103%;
     ascent-override: 95%;
     descent-override: 25%;
@@ -144,7 +159,7 @@
 
 @font-face {
     font-family: "Monaspace Xenon Fallback";
-    src: local("Menlo"), local("Consolas"), local("DejaVu Sans Mono");
+    src: local("Menlo-Regular"), local("Consolas"), local("DejaVuSansMono"), local("Monaco");
     size-adjust: 103%;
     ascent-override: 95%;
     descent-override: 25%;
