@@ -1104,9 +1104,18 @@ button:focus-visible,
     margin: 0 auto clamp(2.25rem, 5vw, 4rem);
 }
 
+/*
+ * Was a literal 740px — the old standard reader measure, hard-coded rather
+ * than referencing the token, exactly as .article-layout--without-toc was.
+ * That left the title on the retired width while the prose moved to 810/880/
+ * 940, and left the reader's own measure control moving the prose without
+ * moving the title above it. On the token, the header tracks the control and
+ * lands on the same centre line as .article-footer, which is the other block
+ * that sits outside .article-layout and is measured the same way.
+ */
 .article-header__content {
     position: relative;
-    width: min(740px, 100%);
+    width: min(var(--reader-measure), 100%);
     margin: 0 auto;
 }
 
@@ -1116,8 +1125,19 @@ button:focus-visible,
  * its own. flex-wrap on the breadcrumb list means every wrapped line — not
  * just the first — keeps this margin clear, so a long breadcrumb trail never
  * runs underneath the cluster.
+ *
+ * Two reserves, because the cluster has two sizes. The Reader trigger is
+ * always there and is 88px wide; the series strip beside it only exists on a
+ * post that belongs to a series, and .article-header__series-part stays
+ * [hidden] everywhere else. Reserving for the strip unconditionally left 96px
+ * of dead space to the right of the breadcrumbs on every standalone post,
+ * which is where breadcrumbs wrap from.
  */
 .article-header__content > .breadcrumbs {
+    padding-right: 5.5rem;
+}
+
+.article-header__content:has(.article-header__series-part:not([hidden])) > .breadcrumbs {
     padding-right: 11.5rem;
 }
 
