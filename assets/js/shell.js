@@ -301,6 +301,27 @@
     }
 
     /*
+     * The research map's rail clips its last waypoint mid-glyph when the
+     * outline is taller than the panel. CSS cannot ask whether an element
+     * overflows, so the fade that says "there is more" is driven from here:
+     * --scrollable while the content exceeds the box, and --at-start/--at-end
+     * at each limit so that edge's fade lifts rather than dimming the first or
+     * last waypoint permanently.
+     */
+    function syncTocOverflow(body) {
+        if (!body) {
+            return;
+        }
+        var scrolls = body.scrollHeight > body.clientHeight + 1;
+        body.classList.toggle('toc__body--scrollable', scrolls);
+        body.classList.toggle('toc__body--at-start', !scrolls || body.scrollTop <= 1);
+        body.classList.toggle(
+            'toc__body--at-end',
+            !scrolls || body.scrollTop + body.clientHeight >= body.scrollHeight - 1
+        );
+    }
+
+    /*
      * Whether a listing overflows depends on the viewport and on the reader's
      * width/text-size settings, so the focusable-region state is re-evaluated
      * whenever the layout changes rather than only once at enhancement time.
@@ -953,6 +974,9 @@
             body.appendChild(views[name].panel);
         });
 
+        body.addEventListener('scroll', function () { syncTocOverflow(body); }, {passive: true});
+        window.addEventListener('resize', function () { syncTocOverflow(body); });
+
         function currentDescription() {
             var view = views[activeView];
             return view.count + ' ' + view.label;
@@ -981,6 +1005,9 @@
             });
             countLabel.textContent = currentDescription();
             setTocExpanded(toc.classList.contains('toc--expanded'));
+            /* The two panels are different heights, so whether the rail
+               overflows is a property of the panel on screen, not of the map. */
+            syncTocOverflow(body);
             viewNames.forEach(function (viewName) {
                 if (viewName !== name) {
                     setCurrent(views[viewName].links, '');

@@ -1065,11 +1065,19 @@ button:focus-visible,
  */
 .pagination {
     display: flex;
+    /* The link centres its text inside .35rem of padding; the bare span does
+       not, so without this both stretch to the row height and their mid-lines
+       land 6.6px apart — half a line at this size. */
+    align-items: center;
     justify-content: space-between;
     margin: 3rem 0 0;
     color: var(--shell-muted);
     font-family: var(--shell-font-display);
     font-size: .8rem;
+    /* Every other chrome label in the theme is uppercase and tracked. Casing is
+       set here so both children share it; only the face differs, by role. */
+    letter-spacing: .08em;
+    text-transform: uppercase;
 }
 
 /* "Page 2 of 7" is a count — one character different means a different page. */
@@ -2653,6 +2661,40 @@ body.reader-focus .reader-tools__trigger {
 }
 
 /*
+ * The rail's links are exactly as wide as .toc__body, and overflow clips at the
+ * padding box — which with zero padding is the content edge exactly. A ring
+ * drawn 3px outside therefore lost both vertical strokes and read as an open
+ * railroad track rather than a focus indicator. Pulled inside, the same fix
+ * .shell-code-action already carries for the same reason.
+ */
+.toc__body a:focus-visible,
+.toc__tab:focus-visible {
+    outline-offset: -2px;
+}
+
+/*
+ * Scrolled, the clip edge cuts the last waypoint through its x-height, which
+ * reads as breakage rather than as "there is more" — macOS overlay scrollbars
+ * are invisible at rest, so nothing else says the list continues. The mask is
+ * applied only while there is genuinely more below, which CSS cannot detect;
+ * shell.js owns the two state classes.
+ */
+.toc__body--scrollable {
+    mask-image: linear-gradient(
+        to bottom,
+        transparent 0,
+        #000 var(--toc-fade-start, 1.6rem),
+        #000 calc(100% - var(--toc-fade-end, 1.6rem)),
+        transparent 100%
+    );
+}
+
+/* Each edge fades only while there is something past it to reach, so neither
+   the first nor the last waypoint is left permanently dimmed. */
+.toc__body--at-start { --toc-fade-start: 0px; }
+.toc__body--at-end { --toc-fade-end: 0px; }
+
+/*
  * Wrapping flex rather than two grid tracks. "Artifacts" is a longer word than
  * "Outline" and carries the larger count, so equal halves clipped the artifact
  * count behind an ellipsis. Content-sized auto tracks were the first repair,
@@ -2713,9 +2755,16 @@ body.reader-focus .reader-tools__trigger {
     cursor: pointer;
 }
 
+/*
+ * The count is the only thing that tells a reader how big the map is, and
+ * knocking 35% of alpha off a tone that is already muted made it the least
+ * legible thing in the panel: 2.98:1 active, 3.03:1 inactive at 9.92px, while
+ * the labels beside them cleared 5.2:1. Same reasoning as .toc__remaining's
+ * separator — the margin and the lighter weight do the separating, the colour
+ * does not have to.
+ */
 .toc__tab span {
     margin-left: .18rem;
-    color: color-mix(in srgb, currentColor 65%, transparent);
     font-weight: 400;
 }
 
@@ -3153,6 +3202,16 @@ body.reader-focus .reader-tools__trigger {
 .article-neighbour--previous { grid-column: 1; }
 .article-neighbours__sep { grid-column: 2; }
 .article-neighbour--next { grid-column: 3; }
+
+/*
+ * The newest and oldest posts have only one neighbour, but the three tracks are
+ * allocated regardless — so /p/readme ellipsed 27% of its only title while the
+ * 400px track beside it rendered nothing. A lone neighbour takes the strip.
+ */
+.article-neighbours__strip:not(:has(.article-neighbour--next)) .article-neighbour--previous,
+.article-neighbours__strip:not(:has(.article-neighbour--previous)) .article-neighbour--next {
+    grid-column: 1 / -1;
+}
 
 .article-neighbours__sep:first-child,
 .article-neighbours__sep:last-child { display: none; }
