@@ -108,6 +108,8 @@
      */
     --shell-font-display: "Monaspace Krypton", "Monaspace Krypton Fallback", ui-monospace, monospace;
     --shell-font-text: "Monaspace Xenon", "Monaspace Xenon Fallback", ui-monospace, monospace;
+    /* Only for glyphs the superfamily does not carry (▣ ☰ ⌕). Arrows are in
+       the subset — see the @font-face comment below before reaching for this. */
     --shell-font-icon: "Apple Symbols", "Segoe UI Symbol", "Noto Sans Symbols 2", system-ui, sans-serif;
     --shell-body: var(--shell-font-text);
     --shell-heading: var(--shell-font-display);
@@ -129,9 +131,15 @@
  * eyebrows, breadcrumbs, badges, chrome labels), Xenon for read surfaces (body
  * prose, decks, captions, excerpts), Neon for parsed surfaces (code, line
  * numbers, timestamps, counts — declared with --shell-mono above). All three
- * are variable fonts carrying their full weight range in a single file, latin
- * slice only. Iconographic characters (▣ ☰ ⌕ ← → ⇾) are NOT in these files and
- * must never be set in them — see --shell-font-icon.
+ * are variable fonts carrying their full weight range in a single file, the
+ * latin slice plus the arrows the chrome draws (← → ↑ ↓ ↗). An arrow set
+ * beside a label must inherit that label's face, never --shell-font-icon: the
+ * superfamily centres its arrows on the cap height and puts them on the mono
+ * advance, so they align with an upper-case label with no nudge at all. The
+ * system symbol fonts do neither — Apple Symbols centres an arrow 1.5px above
+ * the baseline where Krypton's cap centre is 3.74px, which is what once left
+ * every arrow in the chrome sitting .22em low and a different width from the
+ * grid. Only glyphs the superfamily genuinely lacks (▣ ☰ ⌕) take the icon stack.
  */
 @font-face {
     font-family: "Monaspace Krypton";
@@ -412,14 +420,10 @@ button:focus-visible,
     background: color-mix(in srgb, var(--shell-accent) 8%, transparent);
 }
 
-/* The mark is iconographic and U+2197 is outside the Latin slice the three
-   webfonts are subset to, so without this it resolves through the fallback
-   face to Menlo rather than to a face chosen for symbol coverage. */
 .site-nav__menu .nav-external a::after {
     margin-left: .28rem;
     color: var(--shell-cyan);
     content: "↗";
-    font-family: var(--shell-font-icon);
 }
 
 .site-nav__toggle {
@@ -472,7 +476,7 @@ button:focus-visible,
     border: 1px solid var(--shell-accent);
     color: var(--shell-accent-text);
     background: color-mix(in srgb, var(--shell-bg) 92%, transparent);
-    font-family: var(--shell-font-icon);
+    font-family: var(--shell-font-display);
     cursor: pointer;
 }
 
@@ -1045,11 +1049,8 @@ button:focus-visible,
     text-transform: uppercase;
 }
 
-/* Ghost's post-card partial already gives the → its own aria-hidden span, so
-   the arrow takes the symbol stack while the label around it stays scanned. */
 .post-card__read span {
     display: inline-block;
-    font-family: var(--shell-font-icon);
     transition: transform .16s ease;
 }
 
@@ -1074,13 +1075,6 @@ button:focus-visible,
 /* "Page 2 of 7" is a count — one character different means a different page. */
 .page-number {
     font-family: var(--shell-mono);
-}
-
-/* Ghost wraps pagination's arrows in their own span, so the one iconographic
-   character in this row can be pinned to the symbol stack instead of riding
-   into a subset webfont that does not carry it. */
-.pagination a span {
-    font-family: var(--shell-font-icon);
 }
 
 .pagination a {
@@ -1932,16 +1926,11 @@ body.reader-focus .reader-tools__trigger {
     outline-offset: -3px;
 }
 
-/*
- * Only the arrow moves to the symbol stack. .shell-code-expand's own label is
- * a line count and keeps var(--shell-mono); this pseudo-element is a separate
- * node, so the disclosure mark can be iconographic without the rule above it
- * losing the mono pin. U+2193/U+2191 are outside the webfonts' Latin slice.
- */
+/* The disclosure mark inherits .shell-code-expand's mono pin so it sits on the
+   same baseline and advance as the line count it labels. */
 .shell-code-expand::after {
     content: "↓";
     color: var(--shell-cyan);
-    font-family: var(--shell-font-icon);
     font-size: .82rem;
     line-height: 1;
 }
@@ -2942,8 +2931,9 @@ body.reader-focus .reader-tools__trigger {
 
 /*
  * "Prev" and "Next" are words a reader reads, so they take the display face
- * like every other frame label. Only the arrow is iconographic, and it keeps
- * the system symbol stack because neither webfont carries ← or →.
+ * like every other frame label — and since the subset now carries ← and →,
+ * the arrow inherits that same face instead of a system symbol font. Sharing
+ * the label's baseline and advance is what keeps the two optically aligned.
  */
 .article-neighbour > span {
     color: var(--shell-muted);
@@ -2952,10 +2942,6 @@ body.reader-focus .reader-tools__trigger {
     letter-spacing: .08em;
     text-transform: uppercase;
     white-space: nowrap;
-}
-
-.article-neighbour__arrow {
-    font-family: var(--shell-font-icon);
 }
 
 .article-neighbour > strong {
@@ -3258,7 +3244,6 @@ body.reader-focus .reader-tools__trigger {
     margin-left: .28rem;
     color: var(--shell-cyan);
     content: "↗";
-    font-family: var(--shell-font-icon);
 }
 
 .site-footer__rail {
@@ -3387,14 +3372,8 @@ body.reader-focus .reader-tools__trigger {
     cursor: pointer;
 }
 
-/*
- * The ↗ is iconographic, and U+2197 is outside the Latin slice all three
- * webfonts are subset to — set in either of them it silently falls through to
- * whatever the fallback list reaches (Menlo, at the fallback face's 103%
- * size-adjust). Pinned to the symbol stack it is a deliberate choice instead.
- */
 .image-lightbox__arrow {
-    font-family: var(--shell-font-icon);
+    font-family: var(--shell-font-display);
 }
 
 .image-lightbox__close:hover,

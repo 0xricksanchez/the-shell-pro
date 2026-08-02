@@ -63,9 +63,14 @@ _Avoid_: data, code, technical text
 
 **Iconographic**:
 A single character used as a symbol rather than as language — the brand mark
-`▣`, the menu `☰`, search `⌕`, and directional arrows. Nobody reads these; they
-are recognised. Pinned to a system stack chosen for symbol coverage, never a
-webfont and never subset, so they cannot fall back to tofu.
+`▣`, the menu `☰`, search `⌕`. Nobody reads these; they are recognised. Pinned
+to a system stack chosen for symbol coverage so they cannot fall back to tofu.
+
+Directional arrows are deliberately **not** iconographic. An arrow almost always
+sits beside a label, and there it behaves as type: it has to share that label's
+baseline, cap centre and advance, which only its own face can guarantee. They
+are carried in the subset and inherit whichever role their label takes. Treating
+them as iconographic is what once put every arrow in the chrome .22em low.
 _Avoid_: icon, glyph (both also describe SVG iconography, which this is not)
 
 ### Publication

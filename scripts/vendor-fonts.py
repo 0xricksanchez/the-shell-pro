@@ -19,8 +19,12 @@ resulting .woff2 files are committed and that is what ships.
 
     python3 scripts/vendor-fonts.py
 
-Requires fonttools with brotli:  pip install 'fonttools[woff]' brotli
-(the plain `uv tool install fonttools` has no brotli, so woff2 output fails)
+Requires fonttools with brotli. A plain `uv tool install fonttools` has no
+brotli and no importable fontTools for the system interpreter, so woff2 output
+fails both ways. Run it in a throwaway environment instead, which needs nothing
+installed and leaves nothing behind:
+
+    uv run --with 'fonttools[woff]' --with brotli python3 scripts/vendor-fonts.py
 """
 import io
 import os
@@ -44,6 +48,16 @@ LATIN = (
     "U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,"
     "U+2212,U+2215,U+FEFF,U+FFFD"
 )
+
+# The arrows the chrome draws. Google's latin slice carries U+2191/U+2193 but
+# not these three, so before they were added the theme's <- -> and diagonal
+# marks fell through to a system symbol font. That is not merely a different
+# shape: Apple Symbols sets an arrow's ink 1.5px above the baseline at 10.24px
+# where the Krypton label beside it has a 3.74px cap centre, so every arrow sat
+# ~0.22em low and, being proportional, a different width from the mono grid.
+# Carrying them in the superfamily makes alignment and advance correct by
+# construction on every platform.
+ARROWS = "U+2190,U+2192,U+2197"
 
 try:
     from fontTools.ttLib import TTFont
@@ -75,7 +89,7 @@ def main():
 
         trimmed = os.path.join(OUT, f".{stem}.trim.ttf")
         argv = sys.argv
-        sys.argv = ["pyftsubset", raw, f"--unicodes={LATIN}", f"--output-file={trimmed}"]
+        sys.argv = ["pyftsubset", raw, f"--unicodes={LATIN},{ARROWS}", f"--output-file={trimmed}"]
         try:
             subset_main()
         finally:
