@@ -28,6 +28,20 @@
      */
     --shell-border-contrast: #6b8299;
     /*
+     * A bordered panel sitting directly on --shell-surface (the bookmark
+     * card, and any future one like it) is a different surface than the ones
+     * --shell-border-contrast was tuned for above: measured off the actual
+     * painted background, plain --shell-border clears only 1.56:1 there and
+     * --shell-border-strong only 2.46:1, both under the 3:1 floor.
+     * --shell-border-contrast itself would clear it (4.03:1) but that value
+     * is reserved for the reader's explicit high-contrast switch, not a
+     * default panel border. Same lever, lighter touch: 75% keeps the border
+     * visibly related to the ordinary --shell-border instead of jumping
+     * straight to the high-contrast value, and still clears the floor at
+     * 3.23:1.
+     */
+    --shell-border-panel: color-mix(in srgb, var(--shell-border) 75%, #ffffff);
+    /*
      * Opaque panel background for anything sticky over scrolling content
      * without a backdrop-filter: the mobile research map, its sticky tab bar,
      * and the mobile nav dropdown. Not derived from --shell-surface via
@@ -2089,10 +2103,12 @@ body.reader-focus .reader-tools__trigger {
     background: rgba(12, 18, 26, .52);
 }
 
-/* A code card already draws its own frame. Letting the generic figure chrome
-   wrap it produced two near-identical borders with a dead strip between them, so
-   the figure steps back and becomes a pure grouping element for the caption. */
+/* A code card already draws its own frame, and the bookmark panel below draws
+   its own too. Letting the generic figure chrome wrap either produced two
+   near-identical borders with a dead strip between them, so the figure steps
+   back and becomes a pure grouping element. */
 .article-content figure.kg-code-card,
+.article-content figure.kg-bookmark-card,
 .article-content figure:has(> .shell-code-block) {
     border: 0;
     background: none;
@@ -2233,16 +2249,176 @@ body.reader-focus .reader-tools__trigger {
     border: 0;
 }
 
-.article-content .kg-bookmark-container,
 .article-content .kg-file-card-container {
     border-color: var(--shell-border);
     color: var(--shell-text);
     background: var(--shell-surface);
 }
 
-.article-content .kg-bookmark-content,
 .article-content .kg-file-card-contents {
     color: inherit;
+}
+
+/*
+ * Ghost ships this card as an unstyled <a> around three stacked divs — no
+ * flex, no border, nothing sized — so it inherited prose's link colour and
+ * underline and rendered everything (title, description, metadata) at the
+ * same 18.4px with no hierarchy. It reads as an outbound link, not a figure
+ * or a piece of prose, so it borrows the .figure-artifact chrome-strip idiom
+ * (mono label + hairline) rather than looking like an unfinished list item.
+ * The strip is synthesised from ::before/::after on the container itself,
+ * since Ghost's markup gives this card no header element of its own to hang
+ * it on.
+ */
+.article-content .kg-bookmark-container {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 10.5rem;
+    grid-template-rows: auto auto;
+    margin: 0;
+    border: 1px solid var(--shell-border-panel);
+    color: var(--shell-text);
+    background: var(--shell-surface);
+    text-decoration: none;
+}
+
+.article-content .kg-bookmark-container:hover {
+    border-color: var(--shell-accent);
+}
+
+.article-content .kg-bookmark-container::before,
+.article-content .kg-bookmark-container::after {
+    grid-row: 1;
+    grid-column: 1 / -1;
+}
+
+.article-content .kg-bookmark-container::before {
+    padding: .48rem .9rem;
+    border-bottom: 1px solid var(--shell-border-panel);
+    color: var(--shell-muted);
+    font-family: var(--shell-mono);
+    font-size: .64rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+    line-height: 1;
+    text-transform: uppercase;
+    content: "outbound link";
+}
+
+.article-content .kg-bookmark-container::after {
+    align-self: center;
+    justify-self: end;
+    padding-right: .9rem;
+    color: var(--shell-cyan);
+    font-family: var(--shell-mono);
+    font-size: .72rem;
+    line-height: 1;
+    content: "↗";
+}
+
+.article-content .kg-bookmark-content {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: .4rem;
+    min-width: 0;
+    padding: .85rem 1rem;
+    color: inherit;
+}
+
+.article-content .kg-bookmark-title {
+    overflow: hidden;
+    color: var(--shell-text);
+    font-family: var(--shell-font-display);
+    font-size: .95rem;
+    font-weight: 700;
+    line-height: 1.3;
+    display: -webkit-box;
+    line-clamp: 2;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.article-content .kg-bookmark-container:hover .kg-bookmark-title {
+    color: var(--shell-accent-text);
+}
+
+.article-content .kg-bookmark-description {
+    overflow: hidden;
+    color: var(--shell-muted);
+    font-family: var(--shell-font-text);
+    font-size: .78rem;
+    line-height: 1.45;
+    display: -webkit-box;
+    line-clamp: 2;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.article-content .kg-bookmark-metadata {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    min-width: 0;
+    color: var(--shell-muted);
+    font-family: var(--shell-mono);
+    font-size: .64rem;
+    letter-spacing: .06em;
+    line-height: 1;
+    text-transform: uppercase;
+}
+
+.article-content .kg-bookmark-icon {
+    flex: 0 0 auto;
+    width: .9rem;
+    height: .9rem;
+    object-fit: contain;
+}
+
+/* On real content this duplicates .kg-bookmark-publisher verbatim (both read
+   the site name) — it is not a second fact, so only one of them is shown. */
+.article-content .kg-bookmark-author {
+    display: none;
+}
+
+.article-content .kg-bookmark-publisher {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.article-content .kg-bookmark-thumbnail {
+    grid-row: 2;
+    grid-column: 2;
+    min-height: 0;
+    border-left: 1px solid var(--shell-border-panel);
+}
+
+.article-content .kg-bookmark-thumbnail img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/*
+ * Ghost's own markup fires this onerror handler whenever the thumbnail 404s
+ * or is refused — the fccid.io preview on the test page is blocked by the
+ * source's own Cross-Origin-Resource-Policy: same-origin header behind a
+ * bot challenge, a real and permanent condition for that URL, not a preview
+ * fluke. The handler leaves an empty <div class="kg-bookmark-thumbnail"> in
+ * the DOM with its border-left intact, which without this rule renders as a
+ * bordered strip around nothing. :has() reads that same inline style Ghost
+ * set (or the complete absence of an <img>, when the source had no preview
+ * image at all) and drops the whole column instead of just the broken image.
+ */
+.article-content .kg-bookmark-container:has(.kg-bookmark-thumbnail img[style*="display: none" i]),
+.article-content .kg-bookmark-container:not(:has(.kg-bookmark-thumbnail img)) {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.article-content .kg-bookmark-container:has(.kg-bookmark-thumbnail img[style*="display: none" i]) .kg-bookmark-thumbnail,
+.article-content .kg-bookmark-container:not(:has(.kg-bookmark-thumbnail img)) .kg-bookmark-thumbnail {
+    display: none;
 }
 
 .article-content .kg-callout-card {
@@ -3626,6 +3802,17 @@ body.reader-focus .reader-tools__trigger {
         margin-right: 0;
         margin-left: 0;
         transform: none;
+    }
+
+    /* A 10.5rem thumbnail column has room to breathe on desktop; below the
+       article's own narrow breakpoint it would squeeze the title and
+       description into a sliver, so the card drops it and reads single-column. */
+    .article-content .kg-bookmark-container {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .article-content .kg-bookmark-thumbnail {
+        display: none;
     }
 
     .toc__panel > .toc__list {
