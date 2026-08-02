@@ -28,20 +28,6 @@
      */
     --shell-border-contrast: #6b8299;
     /*
-     * A bordered panel sitting directly on --shell-surface (the bookmark
-     * card, and any future one like it) is a different surface than the ones
-     * --shell-border-contrast was tuned for above: measured off the actual
-     * painted background, plain --shell-border clears only 1.56:1 there and
-     * --shell-border-strong only 2.46:1, both under the 3:1 floor.
-     * --shell-border-contrast itself would clear it (4.03:1) but that value
-     * is reserved for the reader's explicit high-contrast switch, not a
-     * default panel border. Same lever, lighter touch: 75% keeps the border
-     * visibly related to the ordinary --shell-border instead of jumping
-     * straight to the high-contrast value, and still clears the floor at
-     * 3.23:1.
-     */
-    --shell-border-panel: color-mix(in srgb, var(--shell-border) 75%, #ffffff);
-    /*
      * Opaque panel background for anything sticky over scrolling content
      * without a backdrop-filter: the mobile research map, its sticky tab bar,
      * and the mobile nav dropdown. Not derived from --shell-surface via
@@ -2275,7 +2261,7 @@ body.reader-focus .reader-tools__trigger {
     grid-template-columns: minmax(0, 1fr) 10.5rem;
     grid-template-rows: auto auto;
     margin: 0;
-    border: 1px solid var(--shell-border-panel);
+    border: 1px solid var(--shell-border);
     color: var(--shell-text);
     background: var(--shell-surface);
     text-decoration: none;
@@ -2293,7 +2279,7 @@ body.reader-focus .reader-tools__trigger {
 
 .article-content .kg-bookmark-container::before {
     padding: .48rem .9rem;
-    border-bottom: 1px solid var(--shell-border-panel);
+    border-bottom: 1px solid var(--shell-border);
     color: var(--shell-muted);
     font-family: var(--shell-mono);
     font-size: .64rem;
@@ -2390,7 +2376,7 @@ body.reader-focus .reader-tools__trigger {
     grid-row: 2;
     grid-column: 2;
     min-height: 0;
-    border-left: 1px solid var(--shell-border-panel);
+    border-left: 1px solid var(--shell-border);
 }
 
 .article-content .kg-bookmark-thumbnail img {
