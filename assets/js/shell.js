@@ -551,7 +551,12 @@
 
         var figureNumber = 0;
         Array.from(content.querySelectorAll('figure')).forEach(function (figure) {
-            if (figure.querySelector('.figure-artifact') || figure.classList.contains('kg-code-card') || figure.querySelector('pre')) {
+            // A bookmark card is an outbound link, not something a reader inspects —
+            // numbering it spends a Fig. N on a figure that was never taken, and the
+            // hint text ("select to inspect") describes an image, not a hyperlink. An
+            // embed card stays eligible: a video or tweet embedded inline is content
+            // the reader can navigate straight to, same as an image figure.
+            if (figure.querySelector('.figure-artifact') || figure.classList.contains('kg-code-card') || figure.classList.contains('kg-bookmark-card') || figure.querySelector('pre')) {
                 return;
             }
             figureNumber += 1;
@@ -700,7 +705,10 @@
             candidates.push({element: element, type: 'code'});
         });
         content.querySelectorAll('figure').forEach(function (element) {
-            if (element.querySelector('pre') || element.classList.contains('kg-file-card')) {
+            // Same exclusion enhanceFigures() applies when it decides what earns a
+            // Fig. N chrome bar: a bookmark card is a link, not a navigable artifact,
+            // so it should not occupy a slot in the index either.
+            if (element.querySelector('pre') || element.classList.contains('kg-file-card') || element.classList.contains('kg-bookmark-card')) {
                 return;
             }
             candidates.push({element: element, type: 'figure'});
