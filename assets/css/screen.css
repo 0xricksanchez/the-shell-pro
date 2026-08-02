@@ -2417,11 +2417,20 @@ body.reader-focus .reader-tools__trigger {
 }
 
 /*
- * Content-sized tracks rather than equal halves. "Artifacts" is a longer word
- * than "Outline", so forcing both tabs to 1fr clipped the artifact count behind
- * an ellipsis in the sidebar. Auto tracks still absorb the leftover space, so
- * the bar stays filled, and they fall back to ellipsis only if the labels
- * genuinely cannot fit.
+ * Wrapping flex rather than two grid tracks. "Artifacts" is a longer word than
+ * "Outline" and carries the larger count, so equal halves clipped the artifact
+ * count behind an ellipsis. Content-sized auto tracks were the first repair,
+ * but they still hand each track an equal share of the leftover space rather
+ * than what it needs: at the map's real width (185px inside a 216px column,
+ * once the scrollbar takes its 15px) the artifact tab was handed 92.1px for a
+ * 95.2px label and clipped the number again — "ARTIFACTS …" — under a wider
+ * face.
+ *
+ * A flex line breaks on the items' natural widths, so the pair drops to two
+ * rows before either label is truncated: the count survives a three-digit
+ * artifact total or a narrower map, which no single-row solution does.
+ * flex-grow still fills the bar, and the ellipsis stays as the last resort for
+ * a tab too wide for a whole row on its own.
  *
  * Sticky at every width, not just the ≤900px collapsed layout: .toc__tabs is
  * the first child of .toc__body, and the overflow that used to live on .toc
@@ -2437,8 +2446,8 @@ body.reader-focus .reader-tools__trigger {
     position: sticky;
     z-index: 1;
     top: 0;
-    display: grid;
-    grid-template-columns: repeat(2, auto);
+    display: flex;
+    flex-wrap: wrap;
     margin: 0 0 .72rem;
     padding: .18rem;
     border: 1px solid var(--shell-border);
@@ -2449,7 +2458,11 @@ body.reader-focus .reader-tools__trigger {
 .toc__tab {
     min-width: 0;
     min-height: 1.9rem;
-    padding: .28rem .35rem;
+    flex: 1 1 auto;
+    /* Inline padding trimmed from .35rem: it is what pushed the pair over the
+       line at the map's real width, and a wrapped tab bar in a sticky panel
+       costs a reader more than 2.4px of inset does. */
+    padding: .28rem .2rem;
     overflow: hidden;
     border: 1px solid transparent;
     color: var(--shell-muted);
