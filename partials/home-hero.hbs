@@ -22,14 +22,14 @@
     <div class="home-hero__scrim" aria-hidden="true"></div>
     <div class="home-hero__grid" aria-hidden="true"></div>
     <div class="home-hero__content">
-        <p class="eyebrow">// technical transmission</p>
+        {{! No eyebrow and no status strip. Both were genre signalling rather
+            than information: "// technical transmission" labelled the site as
+            what the title and description already say it is, and the strip
+            reported a status light with one possible state, the CMS version,
+            and a two-word category — none of it telemetry, on a publication
+            whose whole argument is that its instrumentation is real. }}
         <h1>{{@site.title}}</h1>
         {{#if @site.description}}<p>{{@site.description}}</p>{{/if}}
-        <ul class="home-hero__status" aria-label="Publication status">
-            <li><span aria-hidden="true"></span> channel open</li>
-            <li>Ghost 6</li>
-            <li>research / engineering</li>
-        </ul>
         <div class="home-hero__actions">
             <a class="button" href="#latest">Read latest <span aria-hidden="true">↓</span></a>
             {{#if @site.members_enabled}}

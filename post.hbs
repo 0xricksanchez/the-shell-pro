@@ -14,8 +14,13 @@
                     <p class="article-header__series-part" data-series-part hidden></p>
                     {{> "reader-tools"}}
                 </div>
+                {{! The tag used to be repeated here as a "// name" eyebrow. The
+                    breadcrumb above already carries it, linking to the same URL,
+                    and post-type states the dispatch type — three classifications
+                    stacked over every title, one of them verbatim duplicated. The
+                    no-tag fallback was worse than redundant: it read "// field
+                    note" while post-type's own fallback read "Research note". }}
                 {{> "post-type"}}
-                <p class="eyebrow">{{#primary_tag}}<a href="{{url}}">// {{name}}</a>{{else}}// field note{{/primary_tag}}</p>
                 <h1>{{title}}</h1>
                 {{#if custom_excerpt}}<p class="article-header__excerpt">{{custom_excerpt}}</p>{{/if}}
                 <div class="article-meta">

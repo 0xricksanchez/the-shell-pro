@@ -640,37 +640,9 @@ button:focus-visible,
     font-size: clamp(.94rem, 1.6vw, 1.08rem);
 }
 
-.home-hero__status {
-    display: flex;
-    flex-wrap: wrap;
-    margin: 1rem 0 0;
-    padding: 0;
-    gap: .3rem .95rem;
-    color: var(--shell-muted);
-    font-size: .68rem;
-    letter-spacing: .045em;
-    list-style: none;
-    text-transform: uppercase;
-}
 
-.home-hero__status li {
-    display: inline-flex;
-    align-items: center;
-    gap: .38rem;
-}
 
-.home-hero__status li + li {
-    padding-left: .95rem;
-    border-left: 1px solid var(--shell-border);
-}
 
-.home-hero__status li:first-child span {
-    width: .38rem;
-    height: .38rem;
-    border-radius: 50%;
-    background: var(--shell-accent);
-    box-shadow: 0 0 .6rem var(--shell-accent);
-}
 
 .home-hero__actions {
     display: flex;
@@ -1482,11 +1454,6 @@ body.reader-focus .reader-tools__trigger {
    this cap is what a very long title actually gets. */
 .article-header--very-long-title h1 {
     font-size: clamp(1.55rem, .95rem + 2.3vw, 2.45rem);
-}
-
-.article-header .eyebrow a {
-    color: inherit;
-    text-decoration: none;
 }
 
 .article-header__excerpt {
@@ -3977,14 +3944,7 @@ body.reader-focus .reader-tools__trigger {
         padding: 1.25rem;
     }
 
-    .home-hero__status {
-        gap: .25rem .6rem;
-        font-size: .62rem;
-    }
 
-    .home-hero__status li + li {
-        padding-left: .6rem;
-    }
 
     /* Rescaling the block is a token change: the padding, the gutter and the
        collapsed preview height all derive from these two values, so they cannot
