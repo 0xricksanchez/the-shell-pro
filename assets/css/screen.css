@@ -1628,8 +1628,20 @@ body.reader-focus .reader-tools__trigger {
     background: rgba(230, 151, 255, .06);
 }
 
-.article-content blockquote.research-block {
+/*
+ * The default tone lives here, at one class of specificity, and not on the
+ * .article-content blockquote.research-block rule below. Declared there it
+ * outspecified every --hypothesis/--method/--finding/--limitation modifier
+ * (0,2,1 against 0,1,0) and pinned all seven kinds of block to the hypothesis
+ * cyan, which is the encoding ADR-0002 exists to protect. Same specificity as
+ * the modifiers and earlier in source order, so any modifier now wins, and a
+ * block with no kind still has a tone.
+ */
+.research-block {
     --research-tone: var(--shell-cyan);
+}
+
+.article-content blockquote.research-block {
     position: relative;
     margin: 2rem 0;
     padding: 1.15rem 1.25rem 1.2rem;
