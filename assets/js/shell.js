@@ -1337,7 +1337,14 @@
         original.className = 'image-lightbox__original';
         original.target = '_blank';
         original.rel = 'noopener';
-        original.textContent = 'Open original ↗';
+        // The arrow gets its own element so it can be pinned to the symbol
+        // stack: it is iconographic, and no webfont here carries U+2197.
+        original.textContent = 'Open original ';
+        var originalArrow = doc.createElement('span');
+        originalArrow.className = 'image-lightbox__arrow';
+        originalArrow.setAttribute('aria-hidden', 'true');
+        originalArrow.textContent = '↗';
+        original.appendChild(originalArrow);
         var close = doc.createElement('button');
         close.type = 'button';
         close.className = 'image-lightbox__close';

@@ -1050,12 +1050,30 @@ button:focus-visible,
     transform: translateX(.2rem);
 }
 
+/*
+ * Feed chrome, not prose: "Older Posts" is a control a reader's eye lands on
+ * to orient, which CONTEXT.md classes scanned. Without a family of its own it
+ * inherited the text face from body along with the rest of this row.
+ */
 .pagination {
     display: flex;
     justify-content: space-between;
     margin: 3rem 0 0;
     color: var(--shell-muted);
+    font-family: var(--shell-font-display);
     font-size: .8rem;
+}
+
+/* "Page 2 of 7" is a count — one character different means a different page. */
+.page-number {
+    font-family: var(--shell-mono);
+}
+
+/* Ghost wraps pagination's arrows in their own span, so the one iconographic
+   character in this row can be pinned to the symbol stack instead of riding
+   into a subset webfont that does not carry it. */
+.pagination a span {
+    font-family: var(--shell-font-icon);
 }
 
 .pagination a {
@@ -2682,9 +2700,15 @@ body.reader-focus .reader-tools__trigger {
     font-size: 1rem;
 }
 
+/*
+ * "Part 2 of 5" is the same reading as .article-header__series-part two
+ * elements away, which is set in the mono face because counts are parsed.
+ * Both of these and the part index in the list below now agree.
+ */
 .article-series__status {
     margin: .35rem 0 0;
     color: var(--shell-muted);
+    font-family: var(--shell-mono);
     font-size: .68rem;
     letter-spacing: .045em;
     text-transform: uppercase;
@@ -2705,8 +2729,10 @@ body.reader-focus .reader-tools__trigger {
     gap: .55rem;
 }
 
+/* The part index, "P3" — a count, so the mono face, same as the header strip. */
 .article-series li > span {
     color: var(--shell-magenta);
+    font-family: var(--shell-mono);
     font-size: .68rem;
 }
 
@@ -2729,10 +2755,13 @@ body.reader-focus .reader-tools__trigger {
     color: var(--shell-accent);
 }
 
+/* An interface hint, not part of the title it follows: scanned, so the
+   display face rather than the link's text face. */
 .article-series__current a::after {
     margin-left: .45rem;
     color: var(--shell-muted);
     content: "current";
+    font-family: var(--shell-font-display);
     font-size: .62rem;
     letter-spacing: .05em;
     text-transform: uppercase;
@@ -3325,6 +3354,7 @@ body.reader-focus .reader-tools__trigger {
     gap: .5rem;
 }
 
+/* Controls on a viewer, not prose: scanned, like every other chrome label. */
 .image-lightbox__close,
 .image-lightbox__original {
     display: inline-flex;
@@ -3334,10 +3364,21 @@ body.reader-focus .reader-tools__trigger {
     border: 1px solid var(--shell-border);
     color: var(--shell-text);
     background: var(--shell-surface);
+    font-family: var(--shell-font-display);
     font-size: .72rem;
     line-height: 1;
     text-decoration: none;
     cursor: pointer;
+}
+
+/*
+ * The ↗ is iconographic, and U+2197 is outside the Latin slice all three
+ * webfonts are subset to — set in either of them it silently falls through to
+ * whatever the fallback list reaches (Menlo, at the fallback face's 103%
+ * size-adjust). Pinned to the symbol stack it is a deliberate choice instead.
+ */
+.image-lightbox__arrow {
+    font-family: var(--shell-font-icon);
 }
 
 .image-lightbox__close:hover,
