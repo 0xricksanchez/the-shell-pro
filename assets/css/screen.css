@@ -86,9 +86,17 @@
     --shell-tone-limitation: #facc6b;
     --shell-danger: #ff7b88;
 
-    --shell-cyan: var(--shell-tone-hypothesis);
-    --shell-magenta: var(--shell-tone-finding);
-    --shell-yellow: var(--shell-tone-limitation);
+    /*
+     * The palette, held separately from the tones above even though three of
+     * the values match. Aliasing them meant the token for "this passage states
+     * a hypothesis" was also the token painting every heading on the site, so
+     * the encoding ADR-0002 describes could never actually say anything — its
+     * hypothesis colour was already the ambient one. Same hexes, no visual
+     * change; the two systems are simply free to move independently now.
+     */
+    --shell-cyan: #7dd3fc;
+    --shell-magenta: #e697ff;
+    --shell-yellow: #facc6b;
 
     --shell-shadow: 0 18px 60px rgba(0, 0, 0, .28);
     /*
