@@ -633,15 +633,37 @@ button:focus-visible,
     font-size: clamp(1.9rem, 4.2vw, 3.45rem);
 }
 
-.home-hero__content > p:not(.eyebrow) {
+.home-hero__content > p:not(.home-hero__status) {
     max-width: 42rem;
     margin: .9rem 0 0;
     color: #b6c2d0;
     font-size: clamp(.94rem, 1.6vw, 1.08rem);
 }
 
+/*
+ * One item, so no list and no separator rules — the strip that used to sit here
+ * carried two more readings that said nothing (the CMS version, and a category
+ * the description already states). The glowing dot is the point.
+ */
+.home-hero__status {
+    display: inline-flex;
+    align-items: center;
+    gap: .38rem;
+    margin: 1rem 0 0;
+    color: var(--shell-muted);
+    font-size: .68rem;
+    letter-spacing: .045em;
+    text-transform: uppercase;
+}
 
-
+.home-hero__status span {
+    flex: 0 0 auto;
+    width: .38rem;
+    height: .38rem;
+    border-radius: 50%;
+    background: var(--shell-accent);
+    box-shadow: 0 0 .6rem var(--shell-accent);
+}
 
 
 .home-hero__actions {
@@ -3945,6 +3967,10 @@ body.reader-focus .reader-tools__trigger {
     }
 
 
+
+    .home-hero__status {
+        font-size: .62rem;
+    }
 
     /* Rescaling the block is a token change: the padding, the gutter and the
        collapsed preview height all derive from these two values, so they cannot
