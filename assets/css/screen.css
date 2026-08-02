@@ -2752,7 +2752,7 @@ body.reader-focus .reader-tools__trigger {
 }
 
 .article-series__current a {
-    color: var(--shell-accent);
+    color: var(--shell-accent-text);
 }
 
 /* An interface hint, not part of the title it follows: scanned, so the
