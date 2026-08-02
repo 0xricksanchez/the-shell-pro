@@ -57,7 +57,10 @@
         </header>
 
         <div class="article-layout">
-            <aside class="article-toc" data-toc-container>
+            {{!-- Hidden until shell.js has waypoints to put in it: without JS
+                  the panel never populates, and an empty sticky box titled
+                  "On this page" is worse than no box. shell.js unhides it. --}}
+            <aside class="article-toc" data-toc-container hidden>
                 <nav class="toc" data-toc aria-label="Article navigation">
                     <p class="toc__title">On this page</p>
                 </nav>
@@ -90,8 +93,11 @@
                     {{/if}}
                 </div>
                 <div class="article-actions__buttons">
-                    <button type="button" class="article-action" data-copy-link>Copy link</button>
-                    <button type="button" class="article-action" data-copy-citation>Copy citation</button>
+                    {{!-- Both write to the clipboard from JS, so without it they
+                          are buttons that silently do nothing. shell.js unhides
+                          them, exactly as it already does for Share below. --}}
+                    <button type="button" class="article-action" data-copy-link hidden>Copy link</button>
+                    <button type="button" class="article-action" data-copy-citation hidden>Copy citation</button>
                     <button type="button" class="article-action" data-native-share hidden>Share</button>
                 </div>
             </section>

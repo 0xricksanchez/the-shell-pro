@@ -1581,6 +1581,9 @@
         var citation = [author ? author + '.' : '', '“' + title + '.”', site + ',', date + '.', url]
             .filter(Boolean).join(' ');
 
+        copyLink.hidden = false;
+        copyCitation.hidden = false;
+
         copyLink.addEventListener('click', function () {
             copyText(url).then(function () {
                 actionFeedback(copyLink, 'Link copied');

@@ -1546,6 +1546,16 @@ body.reader-focus .reader-tools__trigger {
     grid-template-columns: minmax(0, var(--reader-measure));
 }
 
+/*
+ * Same collapse, for the case shell.js never gets to decide: without JS the
+ * aside keeps the template's hidden attribute, and a display:none grid item
+ * still leaves its track occupying the rail's width — which would hold the
+ * prose column off-centre for exactly the readers who can least afford it.
+ */
+.article-layout:has(> .article-toc[hidden]) {
+    grid-template-columns: minmax(0, var(--reader-measure));
+}
+
 .article-content {
     min-width: 0;
     grid-column: 1;
@@ -1863,7 +1873,16 @@ body.reader-focus .reader-tools__trigger {
     color: #d6e0eb;
     background: var(--code-surface);
     font-family: var(--shell-mono);
-    font-size: clamp(.75rem, calc(.63rem + .35vw), .82rem);
+    /*
+     * em, not rem: rem is root-relative, so the reader's Text size control —
+     * which sets font-size on .article-content — moved the prose from 16.42 to
+     * 20.16px while every code block stayed pinned at 13.12px. Expressed as a
+     * fraction of the prose it tracks all three settings, and it still tracks
+     * the viewport for free, because .article-content's own size is a clamp.
+     * .713 reproduces the previous desktop pairing (13.12 on 18.4) exactly, so
+     * the code-to-prose ratio the preview suite asserts is unchanged.
+     */
+    font-size: .713em;
     line-height: var(--code-line-height);
     tab-size: 4;
 }
@@ -1967,7 +1986,9 @@ body.reader-focus .reader-tools__trigger {
     overflow: hidden;
     color: #61778e;
     font-family: var(--shell-mono);
-    font-size: clamp(.75rem, calc(.63rem + .35vw), .82rem);
+    /* Must stay the same expression as the <pre> it aligns with, and resolve
+       against the same inherited size, or the numbers drift off their lines. */
+    font-size: .713em;
     line-height: var(--code-line-height);
     list-style: none;
     text-align: right;
@@ -3570,6 +3591,16 @@ body.reader-focus .reader-tools__trigger {
     .toc {
         /* relative, not static: it stays the corner-tick anchor at this width too */
         position: relative;
+        /*
+         * top must be reset with it. Sticky's 6rem is an offset from the
+         * scrollport; relative's is an offset from the element's own layout
+         * slot, which stays reserved where it was — so the inherited value
+         * slid the whole opaque panel 96px down over the top of the article.
+         * It covered the first heading of every post at this width, at every
+         * scroll position, and it also spent 96px of the expanded body's
+         * height budget below, pushing the last waypoints past the fold.
+         */
+        top: auto;
         max-height: none;
         padding: .65rem;
         border: 1px solid var(--shell-border);
@@ -3587,7 +3618,30 @@ body.reader-focus .reader-tools__trigger {
         break-inside: avoid;
     }
 
+    /*
+     * The toggle already states the artifact count, so the label is redundant
+     * here — but hiding the whole row took the time remaining with it, and the
+     * progress spine is off at this width too (background-image above). That
+     * left mobile with no reading-progress signal of any kind, while shell.js
+     * went on writing the correct string into a node that never painted. Only
+     * the redundant half goes; the reader's progress stays, above the toggle
+     * so it is legible collapsed as well as expanded.
+     */
     .toc.toc--collapsible .toc__count {
+        margin: 0 0 .5rem;
+    }
+
+    .toc.toc--collapsible .toc__count-label {
+        display: none;
+    }
+
+    /* Nothing precedes it now, so the separator has nothing to separate. */
+    .toc.toc--collapsible .toc__remaining::before {
+        content: none;
+    }
+
+    /* Before the first scroll there is no time to show; do not leave the gap. */
+    .toc.toc--collapsible .toc__count:not(:has(.toc__remaining:not([hidden]))) {
         display: none;
     }
 
