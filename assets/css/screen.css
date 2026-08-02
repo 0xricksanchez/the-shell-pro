@@ -1366,18 +1366,35 @@ body.reader-focus .reader-tools__trigger {
     right: 1rem;
 }
 
+/*
+ * An escalation ladder: the longer the title, the smaller it is set. That only
+ * works if each step lands below the one above it at *every* viewport width,
+ * and the two modifiers had been left on their pre-Monaspace ramps while the
+ * base was retuned — so --long-title, whose whole job is to shrink long
+ * titles, set them 14.5% larger than no class at all, and --very-long-title
+ * was a no-op above 1305px because its cap had become the base cap.
+ *
+ * Each modifier is now the base ramp scaled down term by term — same shape
+ * (floor, intercept + slope, cap), every term multiplied by roughly .89 and
+ * .79 — which keeps the ordering across the whole range instead of only where
+ * the clamps happen to cross. The three ramps cross their own floors and caps
+ * at different widths, so ordering is verified per width, not assumed: see the
+ * sweep in the iteration report.
+ */
 .article-header h1 {
     font-size: clamp(1.85rem, 1.15rem + 2.75vw, 3.1rem);
     letter-spacing: -.02em;
 }
 
 .article-header--long-title h1 {
-    font-size: clamp(1.95rem, 4.35vw, 3.55rem);
+    font-size: clamp(1.7rem, 1.05rem + 2.5vw, 2.75rem);
     line-height: 1.03;
 }
 
+/* Both classes are set past 108 characters, and this rule comes second, so
+   this cap is what a very long title actually gets. */
 .article-header--very-long-title h1 {
-    font-size: clamp(1.8rem, 3.8vw, 3.1rem);
+    font-size: clamp(1.55rem, .95rem + 2.3vw, 2.45rem);
 }
 
 .article-header .eyebrow a {
