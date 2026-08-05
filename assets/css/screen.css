@@ -87,6 +87,16 @@
     --shell-danger: #ff7b88;
 
     /*
+     * Deliberately not a fifth encoding colour. An aside states no claim, so it
+     * gets the low-chroma absence of a tone rather than a hue of its own: the
+     * reader separates it from the four above by saturation, which leaves all
+     * four free to keep meaning what they mean. Lives here rather than in the
+     * palette below for the ADR-0002 reason — derived from the accent, a
+     * branding change could slide it onto one of the encoding hues.
+     */
+    --shell-tone-aside: #9fb3c8;
+
+    /*
      * The palette, held separately from the tones above even though three of
      * the values match. Aliasing them meant the token for "this passage states
      * a hypothesis" was also the token painting every heading on the site, so
@@ -1664,33 +1674,49 @@ body.reader-focus .reader-tools__trigger {
 
 /*
  * The default tone lives here, at one class of specificity, and not on the
- * .article-content blockquote.research-block rule below. Declared there it
+ * shared .article-content blockquote rule below. Declared there it
  * outspecified every --hypothesis/--method/--finding/--limitation modifier
  * (0,2,1 against 0,1,0) and pinned all seven kinds of block to the hypothesis
  * cyan, which is the encoding ADR-0002 exists to protect. Same specificity as
  * the modifiers and earlier in source order, so any modifier now wins, and a
  * block with no kind still has a tone.
+ *
+ * .aside-block below sets --block-tone at that same one class for the same
+ * reason: an aside never carries a modifier, so its tone has to reach the
+ * shared rule without outspecifying anything the research modifiers set.
  */
 .research-block {
-    --research-tone: var(--shell-cyan);
+    --block-tone: var(--shell-cyan);
 }
 
-.article-content blockquote.research-block {
+/*
+ * Asides are not part of the evidence trail (see CONTEXT.md) — they record
+ * nothing about how a result was reached. They borrow the box below wholesale
+ * and differ in exactly two ways: the low chroma of --shell-tone-aside, which
+ * is what tells a reader this states no claim, and the absence of corner ticks
+ * (see the tick comment further down — an aside is not a navigable panel).
+ */
+.aside-block {
+    --block-tone: var(--shell-tone-aside);
+}
+
+.article-content blockquote.research-block,
+.article-content blockquote.aside-block {
     position: relative;
     margin: 2rem 0;
     padding: 1.15rem 1.25rem 1.2rem;
-    border: 1px solid color-mix(in srgb, var(--research-tone) 45%, var(--shell-border));
-    border-left: .22rem solid var(--research-tone);
+    border: 1px solid color-mix(in srgb, var(--block-tone) 45%, var(--shell-border));
+    border-left: .22rem solid var(--block-tone);
     color: #c7d4e3;
-    background: color-mix(in srgb, var(--research-tone) 7%, var(--shell-surface));
+    background: color-mix(in srgb, var(--block-tone) 7%, var(--shell-surface));
     font-size: .94em;
 }
 
-.research-block::before {
+.research-block::before,
+.aside-block::before {
     display: block;
     margin-bottom: .65rem;
-    color: var(--research-tone);
-    content: attr(data-research-label);
+    color: var(--block-tone);
     font-family: var(--shell-font-display);
     font-size: .66rem;
     font-weight: 700;
@@ -1698,35 +1724,48 @@ body.reader-focus .reader-tools__trigger {
     text-transform: uppercase;
 }
 
+/* One attribute per family rather than a shared generic one: the two are
+   deliberately separate encodings that happen to share a box. */
+.research-block::before {
+    content: attr(data-research-label);
+}
+
+.aside-block::before {
+    content: attr(data-aside-label);
+}
+
 .article-content blockquote.research-block > strong:first-child,
-.article-content blockquote.research-block p > strong:first-child {
+.article-content blockquote.research-block p > strong:first-child,
+.article-content blockquote.aside-block > strong:first-child,
+.article-content blockquote.aside-block p > strong:first-child {
     display: none;
 }
 
-.article-content blockquote.research-block p:last-child {
+.article-content blockquote.research-block p:last-child,
+.article-content blockquote.aside-block p:last-child {
     margin-bottom: 0;
 }
 
 .research-block--environment,
 .research-block--reproduction {
-    --research-tone: var(--shell-cyan);
+    --block-tone: var(--shell-cyan);
 }
 
 .research-block--hypothesis {
-    --research-tone: var(--shell-tone-hypothesis);
+    --block-tone: var(--shell-tone-hypothesis);
 }
 
 .research-block--method {
-    --research-tone: var(--shell-tone-method);
+    --block-tone: var(--shell-tone-method);
 }
 
 .research-block--finding {
-    --research-tone: var(--shell-tone-finding);
+    --block-tone: var(--shell-tone-finding);
 }
 
 .research-block--limitation,
 .research-block--safety {
-    --research-tone: var(--shell-tone-limitation);
+    --block-tone: var(--shell-tone-limitation);
 }
 
 .research-section {
@@ -2516,6 +2555,12 @@ body.reader-focus .reader-tools__trigger {
  * fifteen more sets of ticks would be noise, not signal. If you're tempted to
  * add ticks somewhere else, ask first whether that element is a panel a
  * reader might navigate to, or just decoration.
+ *
+ * .aside-block was asked that question and failed it: createArticleModel()
+ * never indexes one, so it carries no artifact number and cannot be reached
+ * from the research map. It shares the research block's box but not its ticks,
+ * which is the whole of the visual difference between a claim and a remark
+ * beyond tone.
  *
  * :has(.figure-artifact) rather than excluding .kg-code-card / :has(pre)
  * directly: enhanceFigures() in shell.js already withholds the numbered
@@ -4158,7 +4203,8 @@ body.reader-focus .reader-tools__trigger {
     .article-feature-image,
     .article-content figure,
     .article-content table,
-    .research-block {
+    .research-block,
+    .aside-block {
         break-inside: avoid;
     }
 }

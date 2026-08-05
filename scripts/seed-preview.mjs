@@ -405,6 +405,8 @@ function samplingRate({ status, durationMs, tenantClass, backlog }) {
 
         <p>That function is not clever. That is an advantage. During an incident, a rule an operator can read beats a model that requires a separate incident to interpret.</p>
 
+        <blockquote><p><strong>Note:</strong> The exporter batches on a five-second timer, so a crash inside that window drops whatever the buffer was holding. Flush on SIGTERM before the timer fires.</p></blockquote>
+
         <blockquote><p><strong>Finding:</strong> Error and tail-latency sampling give an operator a high-signal reconstruction path without making healthy traffic the most expensive data set in the system.</p></blockquote>
 
         <h2>Operate from a budget, not a dashboard</h2>

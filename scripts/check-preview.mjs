@@ -1990,6 +1990,65 @@ async function inspectEndmatter() {
     check(mobile.overflow <= 0, 'article page has no horizontal overflow on mobile', String(mobile.overflow));
 }
 
+async function inspectProseBlocks() {
+    await navigate('/tracing-the-edge-200ms-feedback-loop/');
+    const state = await evaluate(`(() => {
+        const quotes = Array.from(document.querySelectorAll('[data-post-content] blockquote'));
+        const aside = quotes.find((quote) => quote.classList.contains('aside-block'));
+        const finding = quotes.find((quote) => quote.classList.contains('research-block--finding'));
+        const visibleLabel = (quote) => {
+            const strong = quote?.querySelector('p > strong:first-child, strong:first-child');
+            return strong ? getComputedStyle(strong).display : 'absent';
+        };
+        const artifactTab = document.querySelector('[data-toc-view="artifacts"]');
+        artifactTab?.click();
+        const artifactTargets = Array.from(document.querySelectorAll('.toc__artifact-list a'))
+            .map((link) => link.hash.replace('#', ''));
+        return {
+            asideFound: Boolean(aside),
+            asideLabel: aside?.dataset.asideLabel || '',
+            asideIsResearch: aside?.classList.contains('research-block') || false,
+            asideStrongDisplay: visibleLabel(aside),
+            asideBorder: aside ? getComputedStyle(aside).borderLeftColor : '',
+            asideEyebrow: aside ? getComputedStyle(aside, '::before').content : '',
+            asideTicks: aside ? getComputedStyle(aside, '::after').content : '',
+            findingFound: Boolean(finding),
+            findingBorder: finding ? getComputedStyle(finding).borderLeftColor : '',
+            findingTicks: finding ? getComputedStyle(finding, '::after').content : '',
+            asideIndexed: aside ? artifactTargets.includes(aside.id) : false
+        };
+    })()`);
+
+    check(
+        state.asideFound && state.asideLabel === 'Note' && !state.asideIsResearch,
+        'a Note blockquote becomes an aside block and stays out of the evidence trail',
+        JSON.stringify(state)
+    );
+    check(
+        state.asideStrongDisplay === 'none' && state.asideEyebrow.includes('Note'),
+        'the aside lifts its source label into the eyebrow instead of leaving it in the prose',
+        JSON.stringify({display: state.asideStrongDisplay, eyebrow: state.asideEyebrow})
+    );
+    // The shared box rule is one specificity mistake away from painting every
+    // block a single tone — the failure ADR-0002 and the --block-tone comment
+    // both exist to prevent. Assert the two families resolve to their own hues.
+    check(
+        state.asideBorder === 'rgb(159, 179, 200)' && state.findingBorder === 'rgb(230, 151, 255)',
+        'aside and research blocks resolve to their own tones through the shared box rule',
+        JSON.stringify({aside: state.asideBorder, finding: state.findingBorder})
+    );
+    check(
+        state.asideTicks === 'none' && state.findingTicks !== 'none',
+        'corner ticks stay on navigable research blocks and off asides',
+        JSON.stringify({aside: state.asideTicks, finding: state.findingTicks})
+    );
+    check(
+        !state.asideIndexed,
+        'an aside never appears in the research map artifact index',
+        JSON.stringify(state.asideIndexed)
+    );
+}
+
 async function inspectFooter() {
     await navigate('/');
     const desktop = await evaluate(`(() => {
@@ -2073,6 +2132,7 @@ async function main() {
     await inspectPremiumReadingTools();
     await inspectErrorPage();
     await inspectLongArticle();
+    await inspectProseBlocks();
     await inspectFooter();
     await inspectEndmatter();
     if (failures.length) {

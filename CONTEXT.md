@@ -30,6 +30,14 @@ The sequence of research blocks within an article (hypothesis, method,
 finding, limitation, and so on) that record how a result was reached.
 _Avoid_: methodology section, notes
 
+**Aside**:
+A short authorial remark set off from the prose — context, a caveat in
+passing, a pointer to something adjacent. Distinct from the evidence trail: an
+aside records nothing about how a result was reached, and carries no colour
+encoding beyond "this is not the argument". It shares the research block's box
+but never its corner ticks, and never appears in the research map.
+_Avoid_: note block, callout, admonition
+
 **Reader controls**:
 The reader's own presentation preferences — text size, reading width, contrast,
 focus mode — persisted across articles. Distinct from anything the author sets.

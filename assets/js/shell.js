@@ -653,7 +653,13 @@
         return '';
     }
 
-    function enhanceResearchBlocks() {
+    // An aside states no claim, so it stays out of researchBlockKind() and out of
+    // the evidence trail entirely — see the Aside entry in CONTEXT.md.
+    function isAsideLabel(label) {
+        return /(note|aside|info|tip|remark)/.test(label.toLowerCase());
+    }
+
+    function enhanceBlockquotes() {
         var content = doc.querySelector('[data-post-content]');
         if (!content) {
             return;
@@ -662,16 +668,22 @@
             // Ghost serializes a Markdown blockquote as a direct <strong>, while
             // HTML pasted into the editor may retain a wrapping paragraph.
             var label = quote.querySelector('p > strong:first-child, strong:first-child');
-            if (!label || quote.classList.contains('research-block')) {
+            if (!label || quote.classList.contains('research-block') || quote.classList.contains('aside-block')) {
                 return;
             }
             var labelText = label.textContent.replace(/[:：]\s*$/, '').trim();
             var kind = researchBlockKind(labelText);
-            if (!kind) {
+            if (kind) {
+                quote.classList.add('research-block', 'research-block--' + kind);
+                quote.dataset.researchLabel = labelText;
                 return;
             }
-            quote.classList.add('research-block', 'research-block--' + kind);
-            quote.dataset.researchLabel = labelText;
+            // Evidence is classified first so a research keyword can never be
+            // shadowed by an aside synonym added later.
+            if (isAsideLabel(labelText)) {
+                quote.classList.add('aside-block');
+                quote.dataset.asideLabel = labelText;
+            }
         });
     }
 
@@ -1641,7 +1653,7 @@
         enhanceArticleTitle();
         enhanceSeriesNavigation();
         enhanceResearchSections();
-        enhanceResearchBlocks();
+        enhanceBlockquotes();
         enhanceCodeBlocks();
         enhanceArticleNavigation(createArticleModel());
         enhanceImages();
